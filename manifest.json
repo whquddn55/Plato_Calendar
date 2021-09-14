@@ -5,9 +5,9 @@
 	"description": "PLATO 캘린더",
 	"version": "1.0",
 	"icons": {
-        "16": "default.png",
-        "48": "default.png",
-        "128": "default.png"
+        "16": "assets/icon.png",
+        "48": "assets/icon.png",
+        "128": "assets/icon.png"
     },
 
 	"background": {
@@ -16,8 +16,7 @@
 	},
 
 	"permissions": [
-		"http://plato.pusan.ac.kr/*/",
-		"https://plato.pusan.ac.kr/*/"
+		"storage"
 	],
 
 	"content_scripts": [
@@ -25,5 +24,9 @@
 	      "matches": ["https://plato.pusan.ac.kr/"],
 	      "js": ["content.js"]
 	    }
-  	]
-  }
+  	],
+
+  	"web_accessible_resources": [
+    	"assets/down.png", "assets/up.png" 
+	]
+}

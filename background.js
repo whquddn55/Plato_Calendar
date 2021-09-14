@@ -47,10 +47,10 @@ function getVideoInfo(id) {
 	})
 }
 
-function getHwInfo(courceId) {
+function getHwInfo(courseId) {
 	return new Promise((resolve, reject) => {
 		ajax({
-			url: 'https://plato.pusan.ac.kr/mod/assign/index.php?id=' + courceId,
+			url: 'https://plato.pusan.ac.kr/mod/assign/index.php?id=' + courseId,
 			type: 'get',
 			success: (data) => {
 				let result = {}
@@ -59,7 +59,7 @@ function getHwInfo(courceId) {
 						let title = $(value).find('.cell.c1')[0].textContent
 						
 						result[title] = {}
-						result[title]['date'] = new Date($(value).find('.cell.c2')[0].textContent)
+						result[title]['date'] = (new Date($(value).find('.cell.c2')[0].textContent)).toString()
 						result[title]['status'] = $(value).find('.cell.c3')[0].textContent == '제출 완료' ? 1 : 0
 					}
 				})
@@ -72,10 +72,10 @@ function getHwInfo(courceId) {
 	})
 }
 
-function getZoomInfo(courceId) {
+function getZoomInfo(courseId) {
 	return new Promise((resolve, reject) => {
 		ajax({
-			url: 'https://plato.pusan.ac.kr/mod/zoom/index.php?id=' + courceId,
+			url: 'https://plato.pusan.ac.kr/mod/zoom/index.php?id=' + courseId,
 			type: 'get',
 			success: (data) => {
 				let result = {}
@@ -83,7 +83,8 @@ function getZoomInfo(courceId) {
 					if ($(value).find('.cell.c1').length) {
 						let title = $(value).find('.cell.c1')[0].textContent
 						result[title] = {}
-						result[title]['date'] = new Date($(value).find('.cell.c2')[0].textContent)
+						result[title]['date'] = (new Date($(value).find('.cell.c2')[0].textContent)).toString()
+						result[title]['status'] = (new Date($(value).find('.cell.c2')[0].textContent)) <= (new Date())
 					}
 				})
 				resolve(result)
@@ -122,9 +123,8 @@ function getInfo(item) {
 		let f = $(item).find('.text-ubstrap')
 		if (f.length == 0)
 			return null
-		date = new Date($(item).find('.text-ubstrap')[0].innerText.split('~')[1])
+		date = (new Date($(item).find('.text-ubstrap')[0].innerText.split('~')[1])).toString()
 	}
-	//console.log(type, date, link, title)
 	return {
 		title, link, type, status, date
 	}
@@ -177,6 +177,7 @@ async function mergeInfo(courseId) {
 			obj['date'] = hwStatus[obj['title']]['date']
 		}
 		else if (obj['type'] == '화상강의') {
+			obj['status'] = zoomstatus[obj['title']]['status']
 			obj['date'] = zoomstatus[obj['title']]['date']
 		}
 	}
@@ -186,9 +187,12 @@ async function mergeInfo(courseId) {
 chrome.runtime.onMessage.addListener(
 	async (request, sender, sendResponse) => {
 		let result = []
-		for (let courseId of request.courceList) 
+		for (let courseId of request.courseList) 
 			result = result.concat(await mergeInfo(courseId))
 		console.log(result)
-		chrome.tabs.sendMessage(sender.tab.id, {msg: 'done', result});
+
+		const now = new Date()
+		chrome.storage.local.set({plato_schedule: result, plato_schedule_timestamp: now.toLocaleDateString().split(' ').join('') + '..' + now.toTimeString().split(' ')[0]})
+		chrome.tabs.sendMessage(sender.tab.id, {msg: 'done'});
 	}
 );
