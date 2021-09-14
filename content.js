@@ -556,7 +556,7 @@ function eventButtonFunction(event) {
 				</div>
 				<div style="display: flex; justify-content: space-between;">
 					<div style = "width: 350px; white-space : nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: bold;">${item['title']}</div>
-					<div class = "remaintime" style = "font-weight: bold;">
+					<div class = "remaintime" style = "font-weight: bold;text-align: right;">
 					${remainTime}
 					</div>
 				</div>
@@ -853,6 +853,20 @@ async function main() {
 		return
 	initCalendar()
 	await loadLocalStoageData()
+	// 시간 지난 실강 처리
+
+	let modified = false
+	for (let schedule of scheduleList) {
+		if (schedule['type'] == '화상강의' && schedule['status'] == false) {
+			if (new Date(schedule['date']) <= now) {
+				schedule['status'] = true;
+				modified = true
+			} 
+		}
+	}
+
+	if (modified)
+		await chrome.storage.local.set({'plato_schedule': scheduleList})
 
 	// checkbox 초기화
 	document.getElementById('red_check').checked = init_redbox_status
