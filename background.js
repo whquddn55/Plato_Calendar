@@ -26,16 +26,33 @@ function getVideoInfo(id) {
 			url: 'https://plato.pusan.ac.kr/report/ubcompletion/user_progress_a.php?id=' + id,
 			type: 'get',
 			success: (data) => {
-				let result = {}
+				let result = []
+				let aTagList = $(data).find('.breadcrumb')[0].getElementsByTagName('a')
+				let temp
+				for (let aTag of aTagList) {
+					if (aTag.href.indexOf('course/view.php') != -1){
+						temp = aTag
+						break
+					}
+				}
+				temp = temp.textContent.split(' ')
+				temp.pop()
+				const courseTitle = temp.join(' ')
 				$(data).find('tr').each((index, value) => {
 					if ($(value).find('.text-left').length) {
 						let title = $(value).find('.text-left')[0].textContent.trim()
-						result[title] = false
+						let temp = {}
+						temp['title'] = title
+						temp['status'] = false
 						$(value).find('.text-center').each((index, res) => {
 							if (res.textContent == 'O') {
-								result[title] = true
+								temp['status'] = true
 							}
 						})
+						temp['course'] = courseTitle
+						temp['type'] = '동영상'
+
+						result.push(temp)
 					}
 				})
 				resolve(result)
@@ -53,14 +70,30 @@ function getHwInfo(courseId) {
 			url: 'https://plato.pusan.ac.kr/mod/assign/index.php?id=' + courseId,
 			type: 'get',
 			success: (data) => {
-				let result = {}
+				let result = []
+
+				let aTagList = $(data).find('.breadcrumb')[0].getElementsByTagName('a')
+				let temp
+				for (let aTag of aTagList) {
+					if (aTag.href.indexOf('course/view.php') != -1){
+						temp = aTag
+						break
+					}
+				}
+				temp = temp.textContent.split(' ')
+				temp.pop()
+				const courseTitle = temp.join(' ')
 				$(data).find('tr').each((index, value) => {
 					if ($(value).find('.cell.c1').length) {
-						let title = $(value).find('.cell.c1')[0].textContent
-						
-						result[title] = {}
-						result[title]['date'] = (new Date($(value).find('.cell.c2')[0].textContent)).toString()
-						result[title]['status'] = $(value).find('.cell.c3')[0].textContent == '제출 완료' ? 1 : 0
+						let title = $(value).find('.cell.c1')[0].textContent.trim()
+						let temp = {}
+						temp['title'] = title
+						temp['link'] = $(value).find('.cell.c1 a')[0].href
+						temp['date'] = (new Date($(value).find('.cell.c2')[0].textContent)).toString()
+						temp['status'] = $(value).find('.cell.c3')[0].textContent == '제출 완료'
+						temp['type'] = '과제'
+						temp['course'] = courseTitle
+						result.push(temp)
 					}
 				})
 				resolve(result)
@@ -78,13 +111,29 @@ function getZoomInfo(courseId) {
 			url: 'https://plato.pusan.ac.kr/mod/zoom/index.php?id=' + courseId,
 			type: 'get',
 			success: (data) => {
-				let result = {}
+				let result = []
+				let aTagList = $(data).find('.breadcrumb')[0].getElementsByTagName('a')
+				let temp
+				for (let aTag of aTagList) {
+					if (aTag.href.indexOf('course/view.php') != -1){
+						temp = aTag
+						break
+					}
+				}
+				temp = temp.textContent.split(' ')
+				temp.pop()
+				const courseTitle = temp.join(' ')
 				$(data).find('tr').each((index, value) => {
 					if ($(value).find('.cell.c1').length) {
-						let title = $(value).find('.cell.c1')[0].textContent
-						result[title] = {}
-						result[title]['date'] = (new Date($(value).find('.cell.c2')[0].textContent)).toString()
-						result[title]['status'] = (new Date($(value).find('.cell.c2')[0].textContent)) <= (new Date())
+						let title = $(value).find('.cell.c1')[0].textContent.trim()
+						let temp = {}
+						temp['title'] = title
+						temp['link'] = 'https://plato.pusan.ac.kr/mod/zoom/' + $(value).find('.cell.c1 a')[0].getAttribute('href')
+						temp['date'] = (new Date($(value).find('.cell.c2')[0].textContent)).toString()
+						temp['status'] = (new Date($(value).find('.cell.c2')[0].textContent)) <= (new Date())
+						temp['type'] = '화상강의'
+						temp['course'] = courseTitle
+						result.push(temp)
 					}
 				})
 				resolve(result)
@@ -96,42 +145,35 @@ function getZoomInfo(courseId) {
 	})
 }
 
-function getInfo(item) {
-	const icons = ['동영상', '과제', '화상강의']
-
-	let type = -1
-	let date
+function getOtherInfo(item) {
+	let type = $(item).find('.activityicon').attr('alt').trim()
+	if (type != '동영상')
+		return null
 	let link = $(item).children(0).attr('href')
+	if (link == undefined)
+		return null
+
 	let title = $(item).find('.instancename')[0].textContent.trim()
 	if ($(item).find('.instancename').find('.accesshide').length) {
 		title = title.split(' ')
 		title.pop()
 		title = title.join(' ')
 	}
-	let status = 2
-	for (let icon of icons) {
-		if ($(item).find('.activityicon').attr('alt').indexOf(icon) != -1) {
-			type = icon
-			break
-		}
-	}
 	
-	if (type == -1 || link == undefined)
+	let temp = $(item).find('.text-ubstrap')
+	if (temp.length == 0)
 		return null
+	let date = (new Date(temp[0].innerText.split('~')[1])).toString()
 	
-	if (type == '동영상') {
-		let f = $(item).find('.text-ubstrap')
-		if (f.length == 0)
-			return null
-		date = (new Date($(item).find('.text-ubstrap')[0].innerText.split('~')[1])).toString()
-	}
-	return {
-		title, link, type, status, date
-	}
+	let res = {}
+	res['title'] = title
+	res['link'] = link
+	res['date'] = date
+	return res
 }
 
-async function mergeInfo(courseId) {
-	let videoStatus, hwStatus, zoomstatus, objList = []
+async function getInfo(courseId) {
+	let videoStatus, hwStatus, zoomStatus, videoStatusOthers = []
 	await Promise.all([
 		new Promise(async (resolve, reject) => {
 			videoStatus = await getVideoInfo(courseId)
@@ -142,7 +184,7 @@ async function mergeInfo(courseId) {
 			resolve()
 		}),
 		new Promise(async (resolve, reject) => {
-			zoomstatus = await getZoomInfo(courseId)
+			zoomStatus = await getZoomInfo(courseId)
 			resolve()
 		}),
 		new Promise((resolve, reject) => {
@@ -154,11 +196,9 @@ async function mergeInfo(courseId) {
 					courseTitle.pop()
 					courseTitle = courseTitle.join(' ')
 					$(data).find('#course-all-sections').find('.activityinstance').each((index, item) => {
-						let obj = getInfo(item)
-						if (obj) {
-							obj['course'] = courseTitle
-							objList.push(obj)
-						}
+						let temp = getOtherInfo(item)
+						if (temp)
+							videoStatusOthers.push(temp)
 					})
 					resolve()
 				},
@@ -168,27 +208,22 @@ async function mergeInfo(courseId) {
 			})
 		})
 	])
-	for (let obj of objList) {
-		if (obj['type'] == '동영상') {
-			obj['status'] = videoStatus[obj['title']]
-		}
-		else if (obj['type'] == '과제') {
-			obj['status'] = hwStatus[obj['title']]['status']
-			obj['date'] = hwStatus[obj['title']]['date']
-		}
-		else if (obj['type'] == '화상강의') {
-			obj['status'] = zoomstatus[obj['title']]['status']
-			obj['date'] = zoomstatus[obj['title']]['date']
-		}
+
+	let result = []
+	for (let v of videoStatusOthers) {
+		let obj = videoStatus.find(value => value.title == v.title)
+		if (obj) 
+			result.push(Object.assign(v, obj))
 	}
-	return objList
+	result = result.concat(hwStatus, zoomStatus)
+	return result
 } 
 
 chrome.runtime.onMessage.addListener(
 	async (request, sender, sendResponse) => {
 		let result = []
 		for (let courseId of request.courseList) 
-			result = result.concat(await mergeInfo(courseId))
+			result = result.concat(await getInfo(courseId))
 		console.log(result)
 
 		const now = new Date()

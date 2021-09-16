@@ -5,6 +5,9 @@ let init_bluebox_status
 let init_greenbox_status
 let init_greybox_status
 
+const MINIMUM_INTERVAL = 1000 * 60 // 1분
+const MAXIMUM_INTERVAL = 1000 * 60 * 60 // 1시간
+
 const now = new Date()
 const nowYear = now.getFullYear()
 const nowMonth = now.getMonth() 
@@ -23,412 +26,37 @@ chrome.extension.onMessage.addListener(
 				setSchedule()
 				setTiemStamp()
 				document.getElementById('loader').className = 'loaded'
+				disableLoader()
 			})
 		}
 	});
 
-function injectCalendar() {
-	document.getElementsByClassName('front-box front-box-pmooc')[0].remove()
-	document.getElementsByClassName('front-box front-box-eclass')[0].remove()
-	let box = document.createElement('div')
-	box.innerHTML = `
-	<div id="modal_bg"></div>
-	<div id="modal_body">
-		모달창 내용
-	</div>
-	<div id="calendar-wrap">
-		<div id="calendar">
-			<header>
-				<div style="display: flex; align-self: flex-end; width:30%;">
-					<div id = "loader"></div>
-					<div id = "loaded_timestamp" style="font-size:12px; margin-left: 7px;"></div>
-				</div>
-				<div style="display: flex; align-items: center;">
-					<img id="down" src=${chrome.extension.getURL('assets/down.png')} title="저번 달">
-					<h1 id = "year" style = "margin: 0px 15px;">년 월</h1>
-					<img id="up" src=${chrome.extension.getURL('assets/up.png')} title="저번 달">
-				</div>
-				<div id="checkbox_wrap" style = "width:30%; text-align:end;">
-					<div class="custom_chbox" id = "red_box">
-						<input type="checkbox" id='red_check' checked>
-						<label for="red_check">과제 숨기기</label>
-					</div>
-					<div class="custom_chbox" id = "blue_box">
-						<input type="checkbox" id='blue_check' checked>
-						<label for="blue_check">녹강 숨기기</label>
-					</div>
-					<div class="custom_chbox" id = "green_box">
-						<input type="checkbox" id='green_check' checked>
-						<label for="green_check">실강 숨기기</label>
-					</div>
-					<div class="custom_chbox" id = "grey_box">
-						<input type="checkbox" id='grey_check' checked>
-						<label for="grey_check">완료 숨기기</label>
-					</div>
-				</div>
-				
-			</header>
-			<div style = "display:flex; justify-content: center;">
-				
-			</div>
-			<ul class="weekdays">
-				<li>월</li>
-				<li>화</li>
-				<li>수</li>
-				<li>목</li>
-				<li>금</li>
-				<li>토</li>
-				<li>일</li>
-			</ul>
-		</div>
-	</div>
-	`
-	document.getElementsByClassName('front-box front-box-notice')[0].parentElement.append(box)
+async function injectCalendar() {
+	return new Promise((resolve, reject) => {
+		document.getElementsByClassName('front-box front-box-pmooc')[0].remove()
+		document.getElementsByClassName('front-box front-box-eclass')[0].remove()
+		let link = document.createElement('link')
+		link.rel = "stylesheet"
+		link.href = chrome.extension.getURL('assets/calendar.css')
+		document.head.appendChild(link)
 
-	let style = document.createElement('style')
-	style.innerHTML = `
-	:root {
-		--list-element-background: #87ceeb
-	}
-	#calendar-wrap {
-		height: 900px;
-	}
-	  #calendar header {
-		display:flex;
-		justify-content: space-between;
-		font-size: 25px;
-		font-weight: bold;
-		height: 100px;
-	  }
-	  #calendar {
-		width: 100%;
-	  }
-	  #calendar a {
-		color: #8e352e;
-		text-decoration: none;
-	  }
-	  #calendar ul {
-		list-style: none;
-		padding: 0;
-		margin: 0;
-		width: 100%;
-	  }
-	  #calendar li {
-		display: block;
-		float: left;
-		width: 14.285%;
-		padding: 5px;
-		box-sizing: border-box;
-		border: 1px solid #ccc;
-	  }
-	  #calendar ul.weekdays {
-		height: 40px;
-		background: #3088c5;
-	  }
-	  #calendar ul.weekdays li {
-		text-align: center;
-		text-transform: uppercase;
-		line-height: 20px;
-		border: none !important;
-		padding: 10px 6px;
-		color: #fff;
-		font-size: 13px;
-	  }
-	  #calendar .week li {
-		height: 100px;
-	  }
-	  #calendar .week li:hover {
-		background: #d3d3d3;
-	  }
-	  #calendar .date {
-		text-align: center;
-		margin-bottom: 5px;
-		padding: 2px;
-		color: #000;
-		width: 20px;
-		border-radius: 50%;
-		font-weight: bold;
-		float: right;
-	  }
-	  #calendar .event {
-		display: flex;
-		justify-content: space-between;
-		clear: both;
-		font-size: 13px;
-		border-radius: 4px;
-		padding-right: 5px;
-		margin-bottom: 5px;
-		line-height: 14px;
-		text-decoration: none;
-		text-align: right;
-	  }
-	  #calendar .event-box {
-		width: 30%;
-	  }
-	  #calendar .event-hw,.event-video,.event-zoom:hover{
-		cursor: pointer;
-	  }
-	  #calendar .event-hw {
-		background-color: rgba(177, 0, 0, 0.5);
-		text-decoration: none;
-		border: 1px solid #b5dbdc;
-		border-radius: 4px;
-		width: 100%;
-		height: 30px;
-		line-height: 30px;
-		text-align:center;
-		font-size: 15px;
-	  }
-	  #calendar .event-video {
-		background-color: rgba(1, 62, 153, 0.5);
-		text-decoration: none;
-		border: 1px solid #b5dbdc;
-		border-radius: 4px;
-		width: 100%;
-		height: 30px;
-		line-height: 30px;
-		text-align:center;
-		font-size: 15px;
-	  }
-	  #calendar .event-zoom {
-		background-color: rgba(104, 197, 16, 0.5);
-		text-decoration: none;
-		border: 1px solid #b5dbdc;
-		border-radius: 4px;
-		width: 100%;
-		height: 30px;
-		line-height: 30px;
-		text-align:center;
-		font-size: 15px;
-	  }
-	  
-	  #calendar .event-done {
-		background-color: rgba(95, 95, 95, 0.5);
-	  }
-	  #calendar .other-month {
-		background: #e2e2e2;
-		color: #666;
-	  }
-	  #calendar .today{
-		  background-color: #fffdbb
-	  }
-	  
-	  /* ============================
-					  Mobile Responsiveness
-		 ============================*/
-	  @media (max-width: 768px) {
-		#calendar .weekdays, #calendar .other-month {
-		  display: none;
-		}
-		#calendar li {
-		  height: auto !important;
-		  border: 1px solid #ededed;
-		  width: 100%;
-		  padding: 10px;
-		  margin-bottom: -1px;
-		}
-		#calendar .date {
-		  float: none;
-		}
-	  }
-	  #up {
-		  cursor: pointer;
-		  font-size: 13px;
-		  width: 2em;
-		  height: 2em;
-		  text-align: center;
-	  }
-	  
-	  #down {
-		  cursor: pointer;
-		  font-size: 13px;
-		  width: 2em;
-		  height: 2em;
-		  text-align: center;
-	  }
-	  .custom_chbox {
-		height: 20px
-	}
-	label::selection  {
-		background-color: transparent;
-	}
-	  .custom_chbox input[type=checkbox]{
-		-webkit-appearance: none;
-		position:absolute;
-		width:22px;
-		vertical-align:middle;
-	}
-	.custom_chbox#red_box input[type=checkbox] + label{
-		display: inline-block;
-		cursor: pointer;
-		position: relative;
-		padding-left: 25px;
-		margin-right: 15px;
-		font-size: 13px;
-		font-weight: bold;
-		color: rgba(177, 0, 0, 0.5)
-	}
-	.custom_chbox#blue_box input[type=checkbox] + label{
-		display: inline-block;
-		cursor: pointer;
-		position: relative;
-		padding-left: 25px;
-		margin-right: 15px;
-		font-size: 13px;
-		font-weight: bold;
-		color: rgba(1, 62, 153, 0.5);
-	}
-	.custom_chbox#green_box input[type=checkbox] + label{
-		display: inline-block;
-		cursor: pointer;
-		position: relative;
-		padding-left: 25px;
-		margin-right: 15px;
-		font-size: 13px;
-		font-weight: bold;
-		color: rgba(104, 197, 16, 0.5);
-	}
-	.custom_chbox#grey_box input[type=checkbox] + label{
-		display: inline-block;
-		cursor: pointer;
-		position: relative;
-		padding-left: 25px;
-		margin-right: 15px;
-		font-size: 13px;
-		font-weight: bold;
-		color: rgba(95, 95, 95, 0.5);
-	}
-	.custom_chbox input[type=checkbox] + label:before{
-		border: 1px solid #000;
-		content:"";
-		display:inline-block;
-		width:16px;
-		margin-right:10px;
-		position:absolute;
-		top:0;
-		left:0;
-		bottom:1px;
-		background-color:#f7f7f7;
-		border-radius:2px; 
-	}
-	.custom_chbox#red_box input[type=checkbox]:checked + label:before{
-		text-shadow: 1px 1px 1px rgba(0, 0, 0, .2);
-		background:rgba(177, 0, 0, 0.5);
-		text-align:center;
-	}
-	.custom_chbox#blue_box input[type=checkbox]:checked + label:before{
-		text-shadow: 1px 1px 1px rgba(0, 0, 0, .2);
-		background:rgba(1, 62, 153, 0.5);
-		text-align:center;
-	}
-	.custom_chbox#green_box input[type=checkbox]:checked + label:before{
-		text-shadow: 1px 1px 1px rgba(0, 0, 0, .2);
-		background:rgba(104, 197, 16, 0.5);
-		text-align:center;
-	}
-	.custom_chbox#grey_box input[type=checkbox]:checked + label:before{
-		text-shadow: 1px 1px 1px rgba(0, 0, 0, .2);
-		background:rgba(95, 95, 95, 0.5);
-		text-align:center;
-	}
-	#loader {
-		cursor: pointer;
-		display: block;
-		position: relative;
-		width: 40px;
-		height: 40px;
-		border-radius: 50%;
-		border: 7px solid #000;
-		border-top: 7px solid #1467e2;
-	}
-	#loader.loading {
-		animation: spin 0.5s linear infinite;
-	}
-	#loader.loaded {
-		animation: spin 0.5s linear 2;
-	}
-	@keyframes spin {
-		from {
-			transform: rotate(0deg);
-		}
-		to {
-			transform: rotate(360deg);
-		}
-	}
+		let calendarUrl = chrome.extension.getURL('assets/calendar.html')
+		fetch(calendarUrl)
+			.then(async (data) => {
+				let box = document.createElement('div')
+				let htmldata = await data.text()
+				let downImgUrl = chrome.extension.getURL('assets/down.png')
+				let upImgUrl = chrome.extension.getURL('assets/up.png')
+				htmldata = htmldata.replace('${upImg}', upImgUrl).replace('${downImg}', downImgUrl)
+				box.innerHTML = htmldata
+				document.getElementsByClassName('front-box front-box-notice')[0].parentElement.append(box)
 
-	#modal_body{
-		display: none;
-		position: absolute;
-		background:#eee;
-		z-index: 2;
-		width: 500px;
-		max-height: 550px;
-		overflow-y: auto;
-	}
-	#modal_bg{
-		display: none;
-		position: absolute;
-		content: "";
-		width: 100%;
-		height: 100%;
-		background-color:rgba(0, 0,0, 0.3);
-		top:0;
-		left: 0;
-		z-index: 1;
-	}
-	#modal_body::-webkit-scrollbar {
-		display: none;
-	}
-	#modal_body ol {
-		counter-reset: li; /* Initiate a counter */
-		list-style: none; /* Remove default numbering */
-		*list-style: decimal; /* Keep using default numbering for IE6/7 */
-		font: 15px 'trebuchet MS', 'lucida sans';
-		padding: 0;
-		text-shadow: 0 1px 0 rgba(255,255,255,.5);
-	  }
-	
-	#modal_body .rounded-list a{
-		position: relative;
-		display: block;
-		padding: .4em .4em .4em 2em;
-		*padding: .4em;
-		margin: .5em 10px;
-		background: #ddd;
-		color: #444;
-		text-decoration: none;
-		border-radius: 1em;
-		transition: all .3s ease-out;
-	}
-	
-	#modal_body .rounded-list a:hover{
-		background: #eee;
-	}
-	
-	#modal_body .rounded-list a:hover:before{
-		transform: rotate(360deg);
-	}
-	
-	#modal_body .rounded-list a:before{
-		content: counter(li);
-		counter-increment: li;
-		position: absolute;
-		left: -0.8em;
-		top: 55%;
-		color: #fff;
-		margin-top: -1.3em;
-		background: var(--list-element-background);
-		height: 2em;
-		width: 2em;
-		line-height: 1.3em;
-		border: .3em solid #fff;
-		text-align: center;
-		font-weight: bold;
-		border-radius: 2em;
-		transition: all .3s ease-out;
-	}
-	  `
-	document.getElementsByTagName('head')[0].appendChild(style)
+				resolve()
+			})
+			.catch((error) => {
+				reject()
+			})
+	})
 }
 
 function setSchedule() {
@@ -600,7 +228,7 @@ function eventButtonFunction(event) {
 	modal_body.style.display = 'block'
 	modal_bg.style.display = 'block'
 
-	modal_body.style.left = event.layerX + 'px'
+	modal_body.style.left = Math.min(event.layerX, document.getElementById('page-content').offsetWidth - modal_body.clientWidth - 20) + 'px'
 	modal_body.style.top = event.layerY - modal_body.clientHeight + 'px'
 
 	// 키 인식
@@ -696,8 +324,8 @@ function addCalendarItem(target, targetMonth, date) {
 	eventBox3.appendChild(newEventZoomDone)
 }
 
-function initCalendar() {
-	injectCalendar()
+async function initCalendar() {
+	await injectCalendar()
 	document.getElementById('down').onclick = () => {
 		showMonth--;
 		if (showMonth < 0)
@@ -732,12 +360,8 @@ function initCalendar() {
 		toggle('grey_check', 'grey_box', '완료 ')
 		chrome.storage.local.set({'plato_grey_check': document.getElementById('grey_check').checked})
 	}
-	document.getElementById('loader').onclick = () => {
-		if (document.getElementById('loader').className != 'loading') {
-			document.getElementById('loader').className = 'loading'
-			getSchdule()
-		}
-	}
+
+	enableLoader()
 	renderMonth(nowYear, nowMonth)
 }
 
@@ -820,6 +444,7 @@ async function timer() {
 	while (true) {
 		await new Promise((resolve, reject) => {
 			setTimeout(() => {
+				// modal 창 타이머
 				const modal_body = document.getElementById('modal_body')
 				let liList = modal_body.getElementsByTagName('li')
 				for (let li of liList) {
@@ -842,19 +467,52 @@ async function timer() {
 
 					li.getElementsByClassName('remaintime')[0].innerText = remainTime
 				}
+
+				// 1시간이 지났으면 update
+				let lastUpdateDate = new Date(schedule_timestamp)
+				if (now - lastUpdateDate >= MAXIMUM_INTERVAL || schedule_timestamp == 'None')
+					document.getElementById('loader').click()
+
+				// 1분 이내이면 비활성화
+				if (new Date() - new Date(schedule_timestamp) <= MINIMUM_INTERVAL) 
+					disableLoader()
+				else 
+					enableLoader()
+				
 				resolve()
 			}, 1000)
 		})
 	}
 }
 
+function disableLoader() {
+	const loader = document.getElementById('loader')
+	loader.setAttribute('data-tooltip-text', "1분이내로\n동기화 금지")
+	loader.onclick = null
+	loader.style.cursor = 'not-allowed'
+	loader.style.borderTop = '7px solid rgb(177, 0, 0)'
+}
+
+function enableLoader() {
+	const loader = document.getElementById('loader')
+	loader.removeAttribute('data-tooltip-text')
+	loader.onclick = () => {
+		if (document.getElementById('loader').className != 'loading') {
+			document.getElementById('loader').className = 'loading'
+			getSchdule()
+		}
+	}
+	loader.style.removeProperty('cursor')
+	loader.style.borderTop = '7px solid rgb(20, 103, 226)'
+}
+
 async function main() {
 	if (!document.getElementsByClassName('front-box front-box-pmooc').length)
 		return
-	initCalendar()
+	await initCalendar()
 	await loadLocalStoageData()
-	// 시간 지난 실강 처리
 
+	// 시간 지난 실강 처리
 	let modified = false
 	for (let schedule of scheduleList) {
 		if (schedule['type'] == '화상강의' && schedule['status'] == false) {
@@ -864,7 +522,6 @@ async function main() {
 			} 
 		}
 	}
-
 	if (modified)
 		await chrome.storage.local.set({'plato_schedule': scheduleList})
 
@@ -882,13 +539,17 @@ async function main() {
 
 	timer()
 
-	// 6시간 이 지났으면 update
+	// 1시간이 지났으면 update
 	let lastUpdateDate = new Date(schedule_timestamp)
-	if (now - lastUpdateDate >= 3600 * 1000 * 6 || schedule_timestamp == 'None')
+	if (now - lastUpdateDate >= MAXIMUM_INTERVAL || schedule_timestamp == 'None')
 		document.getElementById('loader').click()
+
+	// 1분 이내이면 비활성화
+	if (new Date() - new Date(schedule_timestamp) <= MINIMUM_INTERVAL) 
+		disableLoader()
+	else 
+		enableLoader()
 }
-
-
 
 main()
 

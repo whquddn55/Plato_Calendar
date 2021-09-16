@@ -1,0 +1,53 @@
+<div>
+	<div id="modal_bg">
+	</div>
+	<div id="modal_body">
+		모달창 내용
+	</div>
+</div>
+<div id="calendar-wrap">
+	<div id="calendar">
+		<header style = "font-size: 25px;">
+			<div style="display: flex; align-self: flex-end; width:30%;">
+				<div id = "loader"></div>
+				<div id = "loaded_timestamp" style="font-size:12px; margin-left: 7px;"></div>
+			</div>
+			<div style="display: flex; align-items: center;">
+				<img id="down" src=${downImg} title="저번 달" style = "font-size: 13px;">
+				<h1 id = "year" style = "margin: 0px 15px;">년 월</h1>
+				<img id="up" src=${upImg} title="저번 달" style = "font-size: 13px;">
+			</div>
+			<div id="checkbox_wrap" style = "width:30%; text-align:end;">
+				<div class="custom_chbox" id = "red_box">
+					<input type="checkbox" id='red_check' checked>
+					<label for="red_check">과제 숨기기</label>
+				</div>
+				<div class="custom_chbox" id = "blue_box">
+					<input type="checkbox" id='blue_check' checked>
+					<label for="blue_check">녹강 숨기기</label>
+				</div>
+				<div class="custom_chbox" id = "green_box">
+					<input type="checkbox" id='green_check' checked>
+					<label for="green_check">실강 숨기기</label>
+				</div>
+				<div class="custom_chbox" id = "grey_box">
+					<input type="checkbox" id='grey_check' checked>
+					<label for="grey_check">완료 숨기기</label>
+				</div>
+			</div>
+			
+		</header>
+		<div style = "display:flex; justify-content: center;">
+			
+		</div>
+		<ul class="weekdays">
+			<li>월</li>
+			<li>화</li>
+			<li>수</li>
+			<li>목</li>
+			<li>금</li>
+			<li>토</li>
+			<li>일</li>
+		</ul>
+	</div>
+</div>

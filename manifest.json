@@ -11,8 +11,7 @@
     },
 
 	"background": {
-		"scripts": ["background.js", "lib/jquery.js"],
-		"persistent": true
+		"scripts": ["background.js", "lib/jquery.js"]
 	},
 
 	"permissions": [
@@ -27,6 +26,6 @@
   	],
 
   	"web_accessible_resources": [
-    	"assets/down.png", "assets/up.png" 
+    	"assets/down.png", "assets/up.png", "assets/calendar.css", "assets/calendar.html"
 	]
 }

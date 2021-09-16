@@ -1,0 +1,424 @@
+:root {
+	--list-element-background: #87ceeb
+}
+#calendar-wrap {
+	height: 900px;
+}
+  #calendar header {
+	display:flex;
+	justify-content: space-between;
+	font-size: 25px;
+	font-weight: bold;
+	height: 100px;
+  }
+  #calendar {
+	width: 100%;
+  }
+  #calendar a {
+	color: #8e352e;
+	text-decoration: none;
+  }
+  #calendar ul {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+	width: 100%;
+  }
+  #calendar li {
+	display: block;
+	float: left;
+	width: 14.285%;
+	padding: 5px;
+	box-sizing: border-box;
+	border: 1px solid #ccc;
+  }
+  #calendar ul.weekdays {
+	height: 40px;
+	background: #3088c5;
+  }
+  #calendar ul.weekdays li {
+	text-align: center;
+	text-transform: uppercase;
+	line-height: 20px;
+	border: none !important;
+	padding: 10px 6px;
+	color: #fff;
+	font-size: 13px;
+  }
+  #calendar .week li {
+	height: 100px;
+  }
+  #calendar .week li:hover {
+	background: #d3d3d3;
+  }
+  #calendar .date {
+	text-align: center;
+	margin-bottom: 5px;
+	padding: 2px;
+	color: #000;
+	width: 20px;
+	border-radius: 50%;
+	font-weight: bold;
+	float: right;
+  }
+  #calendar .event {
+	display: flex;
+	justify-content: space-between;
+	clear: both;
+	font-size: 13px;
+	border-radius: 4px;
+	padding-right: 5px;
+	margin-bottom: 5px;
+	line-height: 14px;
+	text-decoration: none;
+	text-align: right;
+  }
+  #calendar .event-box {
+	width: 30%;
+  }
+  #calendar .event-hw,.event-video,.event-zoom:hover{
+	cursor: pointer;
+  }
+  #calendar .event-hw {
+	background-color: rgba(177, 0, 0, 0.5);
+	text-decoration: none;
+	border: 1px solid #b5dbdc;
+	border-radius: 4px;
+	width: 100%;
+	height: 30px;
+	line-height: 30px;
+	text-align:center;
+	font-size: 15px;
+  }
+  #calendar .event-video {
+	background-color: rgba(1, 62, 153, 0.5);
+	text-decoration: none;
+	border: 1px solid #b5dbdc;
+	border-radius: 4px;
+	width: 100%;
+	height: 30px;
+	line-height: 30px;
+	text-align:center;
+	font-size: 15px;
+  }
+  #calendar .event-zoom {
+	background-color: rgba(104, 197, 16, 0.5);
+	text-decoration: none;
+	border: 1px solid #b5dbdc;
+	border-radius: 4px;
+	width: 100%;
+	height: 30px;
+	line-height: 30px;
+	text-align:center;
+	font-size: 15px;
+  }
+  
+  #calendar .event-done {
+	background-color: rgba(95, 95, 95, 0.5);
+  }
+  #calendar .other-month {
+	background: #e2e2e2;
+	color: #666;
+  }
+  #calendar .today{
+	  background-color: #fffdbb
+  }
+  
+  /* ============================
+				  Mobile Responsiveness
+	 ============================*/
+  @media (max-width: 768px) {
+	#calendar .weekdays, #calendar .other-month {
+	  display: none;
+	}
+	#calendar li {
+	  height: auto !important;
+	  border: 1px solid #ededed;
+	  width: 100%;
+	  padding: 10px;
+	  margin-bottom: -1px;
+	}
+	#calendar .date {
+	  float: none;
+	}
+  }
+  #up {
+	  cursor: pointer;
+	  font-size: 13px;
+	  width: 2em;
+	  height: 2em;
+	  text-align: center;
+  }
+  
+  #down {
+	  cursor: pointer;
+	  font-size: 13px;
+	  width: 2em;
+	  height: 2em;
+	  text-align: center;
+  }
+  .custom_chbox {
+	height: 20px
+}
+label::selection  {
+	background-color: transparent;
+}
+  .custom_chbox input[type=checkbox]{
+	-webkit-appearance: none;
+	position:absolute;
+	width:22px;
+	vertical-align:middle;
+}
+.custom_chbox#red_box input[type=checkbox] + label{
+	display: inline-block;
+	cursor: pointer;
+	position: relative;
+	padding-left: 25px;
+	margin-right: 15px;
+	font-size: 13px;
+	font-weight: bold;
+	color: rgba(177, 0, 0, 0.5)
+}
+.custom_chbox#blue_box input[type=checkbox] + label{
+	display: inline-block;
+	cursor: pointer;
+	position: relative;
+	padding-left: 25px;
+	margin-right: 15px;
+	font-size: 13px;
+	font-weight: bold;
+	color: rgba(1, 62, 153, 0.5);
+}
+.custom_chbox#green_box input[type=checkbox] + label{
+	display: inline-block;
+	cursor: pointer;
+	position: relative;
+	padding-left: 25px;
+	margin-right: 15px;
+	font-size: 13px;
+	font-weight: bold;
+	color: rgba(104, 197, 16, 0.5);
+}
+.custom_chbox#grey_box input[type=checkbox] + label{
+	display: inline-block;
+	cursor: pointer;
+	position: relative;
+	padding-left: 25px;
+	margin-right: 15px;
+	font-size: 13px;
+	font-weight: bold;
+	color: rgba(95, 95, 95, 0.5);
+}
+.custom_chbox input[type=checkbox] + label:before{
+	border: 1px solid #000;
+	content:"";
+	display:inline-block;
+	width:16px;
+	margin-right:10px;
+	position:absolute;
+	top:0;
+	left:0;
+	bottom:1px;
+	background-color:#f7f7f7;
+	border-radius:2px; 
+}
+.custom_chbox#red_box input[type=checkbox]:checked + label:before{
+	text-shadow: 1px 1px 1px rgba(0, 0, 0, .2);
+	background:rgba(177, 0, 0, 0.5);
+	text-align:center;
+}
+.custom_chbox#blue_box input[type=checkbox]:checked + label:before{
+	text-shadow: 1px 1px 1px rgba(0, 0, 0, .2);
+	background:rgba(1, 62, 153, 0.5);
+	text-align:center;
+}
+.custom_chbox#green_box input[type=checkbox]:checked + label:before{
+	text-shadow: 1px 1px 1px rgba(0, 0, 0, .2);
+	background:rgba(104, 197, 16, 0.5);
+	text-align:center;
+}
+.custom_chbox#grey_box input[type=checkbox]:checked + label:before{
+	text-shadow: 1px 1px 1px rgba(0, 0, 0, .2);
+	background:rgba(95, 95, 95, 0.5);
+	text-align:center;
+}
+#loader {
+	cursor: pointer;
+	display: block;
+	position: relative;
+	width: 40px;
+	height: 40px;
+	border-radius: 50%;
+	border: 7px solid #000;
+	border-top: 7px solid rgb(20, 103, 226);
+}
+#loader.loading {
+	animation: spin 0.5s linear infinite;
+}
+#loader.loaded {
+	animation: spin 0.5s linear 2;
+}
+@keyframes spin {
+	from {
+		transform: rotate(0deg);
+	}
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+#modal_body{
+	display: none;
+	position: absolute;
+	background:#eee;
+	z-index: 2;
+	width: 500px;
+	max-height: 550px;
+	overflow-y: auto;
+}
+#modal_bg{
+	display: none;
+	position: absolute;
+	content: "";
+	width: 100%;
+	height: 100%;
+	background-color:rgba(0, 0,0, 0.3);
+	top:0;
+	left: 0;
+	z-index: 1;
+}
+#modal_body::-webkit-scrollbar {
+	display: none;
+}
+#modal_body ol {
+	counter-reset: li; /* Initiate a counter */
+	list-style: none; /* Remove default numbering */
+	*list-style: decimal; /* Keep using default numbering for IE6/7 */
+	font: 15px 'trebuchet MS', 'lucida sans';
+	padding: 0;
+	text-shadow: 0 1px 0 rgba(255,255,255,.5);
+  }
+
+#modal_body .rounded-list a{
+	position: relative;
+	display: block;
+	padding: .4em .4em .4em 2em;
+	*padding: .4em;
+	margin: .5em 10px;
+	background: #ddd;
+	color: #444;
+	text-decoration: none;
+	border-radius: 1em;
+	transition: all .3s ease-out;
+}
+
+#modal_body .rounded-list a:hover{
+	background: #eee;
+}
+
+#modal_body .rounded-list a:hover:before{
+	transform: rotate(360deg);
+}
+
+#modal_body .rounded-list a:before{
+	content: counter(li);
+	counter-increment: li;
+	position: absolute;
+	left: -0.8em;
+	top: 55%;
+	color: #fff;
+	margin-top: -1.3em;
+	background: var(--list-element-background);
+	height: 2em;
+	width: 2em;
+	line-height: 1.3em;
+	border: .3em solid #fff;
+	text-align: center;
+	font-weight: bold;
+	border-radius: 2em;
+	transition: all .3s ease-out;
+}
+[data-tooltip-text]:hover {
+	position: relative;
+}
+[data-tooltip-text]:hover:after {
+	content: attr(data-tooltip-text);
+	white-space: pre;
+	text-align: center;
+	position: absolute;
+	bottom: 100%;
+	left: 0;
+	width: 80px;
+	height: 40px;
+	background-color: rgba(0, 0, 0, 0.8);
+	color: #FFFFFF;
+	font-size: 12px;
+	z-index: 9999;
+}
+
+#calendar-box {
+	margin-bottom: 10px;
+}
+
+#calendar-box summary {
+	background:#444; 
+	color:#fff; 
+	padding:10px; 
+	outline:0; 
+	border-radius:5px; 
+	cursor:pointer; 
+	text-align:left; 
+	box-shadow: 1px 1px 2px gray;
+}
+
+details[open] summary ~ * {
+	animation: sweep .2s ease-in-out;
+}
+
+details:not([open]) summary ~ * {
+	animation: sweep 5s ease-in-out reverse;
+}
+
+@keyframes sweep{
+	0%    {opacity: 0; margin-top: -10px}
+	100%  {opacity: 1; margin-top: 0px}
+}
+
+#context-menu {
+	display: none;
+	position: absolute;
+	width: 200px;
+	margin: 0;
+	padding: 0;
+	background: #FFFFFF;
+	border-radius: 5px;
+	list-style: none;
+	box-shadow:
+	  0 15px 35px rgba(50,50,90,0.1),
+	  0 5px 15px rgba(0,0,0,0.07);
+	overflow: hidden;
+	z-index: 9999;
+}
+  
+#context-menu li {
+	cursor: pointer;
+	border-left: 3px solid transparent;
+	transition: ease .2s;
+}
+  
+#context-menu li {
+	display: block;
+	padding: 10px;
+	color: #B0BEC5;
+	text-decoration: none;
+	transition: ease .2s;
+}
+  
+#context-menu li:hover {
+	background: #CE93D8;
+	border-left: 3px solid #9C27B0;
+}
+  
+#context-menu li:hover {
+	color: #FFFFFF;
+}
