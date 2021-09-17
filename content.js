@@ -1,9 +1,11 @@
 let scheduleList = []
-let schedule_timestamp = 'None'
-let init_redbox_status
-let init_bluebox_status
-let init_greenbox_status
-let init_greybox_status
+let lastUpdateTime = 'None'
+let userScheduleSettingList = []
+let redRadioChecked
+let blueRadioChecked
+let greenRadioChecked
+let greyRadioChecked
+let calendarboxToggle
 
 const MINIMUM_INTERVAL = 1000 * 60 // 1분
 const MAXIMUM_INTERVAL = 1000 * 60 * 60 // 1시간
@@ -20,9 +22,9 @@ let showMonth = nowMonth
 chrome.extension.onMessage.addListener(
 	(request, sender, sendResponse) => {
 		if (request.msg == 'done') {
-			chrome.storage.local.get(['plato_schedule', 'plato_schedule_timestamp'], (result) => {
-				scheduleList = result.plato_schedule
-				schedule_timestamp = result.plato_schedule_timestamp
+			chrome.storage.local.get(['scheduleList', 'lastUpdateTime'], (result) => {
+				scheduleList = result.scheduleList
+				lastUpdateTime = result.lastUpdateTime
 				setSchedule()
 				setTiemStamp()
 				document.getElementById('loader').className = 'loaded'
@@ -33,8 +35,6 @@ chrome.extension.onMessage.addListener(
 
 async function injectCalendar() {
 	return new Promise((resolve, reject) => {
-		document.getElementsByClassName('front-box front-box-pmooc')[0].remove()
-		document.getElementsByClassName('front-box front-box-eclass')[0].remove()
 		let link = document.createElement('link')
 		link.rel = "stylesheet"
 		link.href = chrome.extension.getURL('assets/calendar.css')
@@ -43,17 +43,40 @@ async function injectCalendar() {
 		let calendarUrl = chrome.extension.getURL('assets/calendar.html')
 		fetch(calendarUrl)
 			.then(async (data) => {
-				let box = document.createElement('div')
 				let htmldata = await data.text()
 				let downImgUrl = chrome.extension.getURL('assets/down.png')
 				let upImgUrl = chrome.extension.getURL('assets/up.png')
+
 				htmldata = htmldata.replace('${upImg}', upImgUrl).replace('${downImg}', downImgUrl)
-				box.innerHTML = htmldata
-				document.getElementsByClassName('front-box front-box-notice')[0].parentElement.append(box)
+
+				let box = document.createElement('details')
+				let summary = document.createElement('summary')
+				let detail = document.createElement('div')
+				summary.innerText = 'PLATO 달력'
+				box.appendChild(summary)
+				box.appendChild(detail)
+				box.setAttribute('id', 'calendar-box')
+				box.ontoggle = () => {
+					calendarboxToggle = box.open
+					chrome.storage.local.set({'calendarboxToggle': calendarboxToggle})
+				}
+				detail.innerHTML = htmldata
+
+				let position = document.getElementsByClassName('front-box front-box-course')[0]
+				position.parentElement.insertBefore(box, position)
+
+				// context 메뉴 삽입
+				const contextMenuList = document.createElement('ul')
+				contextMenuList.setAttribute('id', 'context-menu')
+				const contextMenu1 = document.createElement('li')
+				contextMenu1.innerText = '안녕하세요'
+				contextMenuList.appendChild(contextMenu1)
+				document.getElementById('page').appendChild(contextMenuList)
 
 				resolve()
 			})
 			.catch((error) => {
+				console.log(error)
 				reject()
 			})
 	})
@@ -77,44 +100,21 @@ function setSchedule() {
 		let target = document.getElementById(new Date(date.getFullYear(), date.getMonth(), date.getDate()).toDateString().split(' ').join('_'))
 
 		if (target) {
-			if (s['status'] == 2)
-				console.error('[PLATO_CALANER ERROR]undifiend status on ' + s['title'])
-			if (s['type'] == '과제') {
-				let targetClass = 'event-hw'
-				if (s['status'] == 1) {
-					targetClass += ' event-done'
-					target.getElementsByClassName(targetClass)[0].textContent = parseInt(target.getElementsByClassName(targetClass)[0].textContent ? target.getElementsByClassName(targetClass)[0].textContent : 0) + 1
-					target.getElementsByClassName(targetClass)[0].setAttribute('style', 'visibility :' + (document.getElementById('grey_check').checked ? 'visible' : 'hidden'))
-				}
-				else {
-					target.getElementsByClassName(targetClass)[0].textContent = parseInt(target.getElementsByClassName(targetClass)[0].textContent ? target.getElementsByClassName(targetClass)[0].textContent : 0) + 1
-					target.getElementsByClassName(targetClass)[0].setAttribute('style', 'visibility :' + (document.getElementById('red_check').checked ? 'visible' : 'hidden'))
-				}
+			let targetClass = {'과제': 'event-hw', '동영상' : 'event-video', '화상강의' : 'event-zoom'}[s['type']]
+			let targetColor = {'과제': 'red_check', '동영상' : 'blue_check', '화상강의' : 'green_check'}[s['type']]
+
+			let userScheduleSetting = userScheduleSettingList.find((value) => {
+				return value['course'] == s['course'] && value['title'] == s['title']
+			})
+			if (userScheduleSetting) {
+				targetClass += userScheduleSetting['status'] ? ' event-done' : ''
+				targetColor = userScheduleSetting['status'] ? 'grey_check' : targetColor
+			} else {
+				targetClass += s['status'] ? ' event-done' : ''
+				targetColor = s['status'] ? 'grey_check' : targetColor
 			}
-			else if (s['type'] == '동영상') {
-				let targetClass = 'event-video'
-				if (s['status'] == 1) {
-					targetClass += ' event-done'
-					target.getElementsByClassName(targetClass)[0].textContent = parseInt(target.getElementsByClassName(targetClass)[0].textContent ? target.getElementsByClassName(targetClass)[0].textContent : 0) + 1
-					target.getElementsByClassName(targetClass)[0].setAttribute('style', 'visibility :' + (document.getElementById('grey_check').checked ? 'visible' : 'hidden'))
-				}
-				else {
-					target.getElementsByClassName(targetClass)[0].textContent = parseInt(target.getElementsByClassName(targetClass)[0].textContent ? target.getElementsByClassName(targetClass)[0].textContent : 0) + 1
-					target.getElementsByClassName(targetClass)[0].setAttribute('style', 'visibility :' + (document.getElementById('blue_check').checked ? 'visible' : 'hidden'))
-				}	
-			}
-			else if (s['type'] == '화상강의') {
-				let targetClass = 'event-zoom'
-				if (s['status'] == 1) {
-					targetClass += ' event-done'
-					target.getElementsByClassName(targetClass)[0].textContent = parseInt(target.getElementsByClassName(targetClass)[0].textContent ? target.getElementsByClassName(targetClass)[0].textContent : 0) + 1
-					target.getElementsByClassName(targetClass)[0].setAttribute('style', 'visibility :' + (document.getElementById('grey_check').checked ? 'visible' : 'hidden'))
-				}
-				else {
-					target.getElementsByClassName(targetClass)[0].textContent = parseInt(target.getElementsByClassName(targetClass)[0].textContent ? target.getElementsByClassName(targetClass)[0].textContent : 0) + 1
-					target.getElementsByClassName(targetClass)[0].setAttribute('style', 'visibility :' + (document.getElementById('green_check').checked ? 'visible' : 'hidden'))
-				}	
-			}
+			target.getElementsByClassName(targetClass)[0].textContent = parseInt(target.getElementsByClassName(targetClass)[0].textContent ? target.getElementsByClassName(targetClass)[0].textContent : 0) + 1
+			target.getElementsByClassName(targetClass)[0].setAttribute('style', 'visibility :' + (document.getElementById(targetColor).checked ? 'visible' : 'hidden'))
 		}
 	}
 }
@@ -155,7 +155,7 @@ function renderMonth(year, month) {
 	document.getElementById('calendar').appendChild(target)
 }
 
-function eventButtonFunction(event) {
+function eventButtonClickEvent(event) {
 	const addToList = (root, item, color) => {
 		document.documentElement.style.setProperty('--list-element-background', color)
 		let remainDate = new Date(item['date']) - new Date()
@@ -201,14 +201,17 @@ function eventButtonFunction(event) {
 	`
 
 	const date = event.path[3].id
-	const status = event.path[0].className.indexOf('event-done') == -1 ? 0 : 1
+	const status = event.path[0].className.indexOf('event-done') == -1 ? false : true
 	const type = {'hw': '과제', 'video': '동영상', 'zoom': '화상강의'}[event.path[0].className.replace('event-done', '').trim().split('-')[1]]
 
 	let pushList = []
 	for (let schedule of scheduleList) {
-		if (new Date(schedule['date']).toDateString().split(' ').join('_') == date && schedule['status'] == status && schedule['type'] == type) {
+		let userScheduleSetting = userScheduleSettingList.find((value) => {
+			return schedule['course'] == value['course'] && schedule['title'] == value['title']
+		})
+		let targetStatus = userScheduleSetting ? userScheduleSetting['status'] : schedule['status']
+		if (new Date(schedule['date']).toDateString().split(' ').join('_') == date && targetStatus == status && schedule['type'] == type) {
 			pushList.push({
-				'root' : modal_body.getElementsByClassName('rounded-list')[0],
 				'data' : schedule,
 				'color' : window.getComputedStyle(event.path[0])['background-color'].replace('0.5', '1.0')
 			})
@@ -222,7 +225,7 @@ function eventButtonFunction(event) {
 		return aValue < bValue ? -1 : 1
 	})
 	for (let e of pushList)
-		addToList(e['root'], e['data'], e['color'])
+		addToList(modal_body.getElementsByClassName('rounded-list')[0], e['data'], e['color'])
 	
 	modal_body.setAttribute('date', date)
 	modal_body.style.display = 'block'
@@ -242,6 +245,89 @@ function eventButtonFunction(event) {
 			}
 		}
 	}
+	
+	function toggleOnOff(num) {
+		if (num) {
+			document.getElementById("context-menu").style.display = 'block'
+			document.getElementById('modal_bg').onclick = null
+		}
+		else {
+			document.getElementById("context-menu").style.display = 'none'
+			document.getElementById('modal_bg').onclick = modalBackgroundClickEvent
+		}
+	}
+	function showMenu(x, y) {
+		document.getElementById("context-menu").style.top = y + "px"
+		document.getElementById("context-menu").style.left = x + "px"
+	}
+
+	// 왼쪽클릭 인식
+	document.addEventListener("click", () => {
+		toggleOnOff(0)
+	})
+
+	// 오른클릭 인식
+	for (let e of modal_body.getElementsByClassName('rounded-list')[0].getElementsByTagName('li')) {
+		e.oncontextmenu = (event) => {
+			event.preventDefault()
+			toggleOnOff(1)
+			showMenu(event.x, event.y)
+
+			// 컨텍스트메뉴 동작 설정
+			const contextMenuItem = document.getElementById('context-menu').children[0]
+
+			if (status) {
+				contextMenuItem.textContent = '완료상태 해제하기'
+				let userScheduleSetting = {
+					'title': e.children[0].children[1].children[0].textContent,
+					'course': e.children[0].children[0].children[0].textContent,
+					'status': false
+				}
+				let obj = userScheduleSettingList.find((value) => {
+					return (value['course'] == userScheduleSetting['course']) && (value['title'] == userScheduleSetting['title'])
+				})
+				if (obj) {
+					userScheduleSettingList.splice(userScheduleSettingList.indexOf(obj), 1)
+				} else {
+					userScheduleSettingList.push(userScheduleSetting)
+				}
+				contextMenuItem.onclick = () => {
+					chrome.storage.local.set({'userScheduleSettingList' : userScheduleSettingList})
+					modalBackgroundClickEvent()
+					setSchedule()
+				}
+			} else {
+				contextMenuItem.textContent = '완료로 바꾸기'
+				let userScheduleSetting = {
+					'title': e.children[0].children[1].children[0].textContent,
+					'course': e.children[0].children[0].children[0].textContent,
+					'status': true
+				}
+				let obj = userScheduleSettingList.find((value) => {
+					return (value['course'] == userScheduleSetting['course']) && (value['title'] == userScheduleSetting['title'])
+				})
+				if (obj) {
+					userScheduleSettingList.splice(userScheduleSettingList.indexOf(obj), 1)
+				} else {
+					userScheduleSettingList.push(userScheduleSetting)
+				}
+				contextMenuItem.onclick = () => {
+					chrome.storage.local.set({'userScheduleSettingList' : userScheduleSettingList})
+					modalBackgroundClickEvent()
+					setSchedule()
+				}
+			}
+		}
+	}	
+}
+
+function modalBackgroundClickEvent() {
+	const modal_body = document.getElementById('modal_body')
+	const modal_bg = document.getElementById('modal_bg')
+	modal_body.scrollTo(0, 0)
+	modal_body.style.display = 'none'
+	modal_bg.style.display = 'none'
+	window.onkeydown = null
 }
 
 function addCalendarItem(target, targetMonth, date) {
@@ -273,41 +359,35 @@ function addCalendarItem(target, targetMonth, date) {
 	let newEventHw = document.createElement('div')
 	newEventHw.setAttribute('class', 'event-hw')
 	newEventHw.style.visibility = 'hidden'
-	newEventHw.onclick = eventButtonFunction
+	newEventHw.onclick = eventButtonClickEvent
 
 	let newEventVideo = document.createElement('div')
 	newEventVideo.setAttribute('class', 'event-video')
 	newEventVideo.style.visibility = 'hidden'
-	newEventVideo.onclick = eventButtonFunction
+	newEventVideo.onclick = eventButtonClickEvent
 
 	let newEventZoom = document.createElement('div')
 	newEventZoom.setAttribute('class', 'event-zoom')
 	newEventZoom.style.visibility = 'hidden'
-	newEventZoom.onclick = eventButtonFunction
+	newEventZoom.onclick = eventButtonClickEvent
 
 	let newEventHwDone = document.createElement('div')
 	newEventHwDone.setAttribute('class', 'event-hw event-done')
 	newEventHwDone.style.visibility = 'hidden'
-	newEventHwDone.onclick = eventButtonFunction
+	newEventHwDone.onclick = eventButtonClickEvent
 
 	let newEventVideoDone = document.createElement('div')
 	newEventVideoDone.setAttribute('class', 'event-video event-done')
 	newEventVideoDone.style.visibility = 'hidden'
-	newEventVideoDone.onclick = eventButtonFunction
+	newEventVideoDone.onclick = eventButtonClickEvent
 
 	let newEventZoomDone = document.createElement('div')
 	newEventZoomDone.setAttribute('class', 'event-zoom event-done')
 	newEventZoomDone.style.visibility = 'hidden'
-	newEventZoomDone.onclick = eventButtonFunction
+	newEventZoomDone.onclick = eventButtonClickEvent
 
-	let modal_body = document.getElementById('modal_body')
 	let modal_bg = document.getElementById('modal_bg')
-	modal_bg.onclick = () => {
-		modal_body.scrollTo(0, 0)
-		modal_body.style.display = 'none'
-		modal_bg.style.display = 'none'
-		window.onkeydown = null
-	}
+	modal_bg.onclick = modalBackgroundClickEvent
 
 	target.appendChild(newDay)
 	newDay.appendChild(newDate)
@@ -343,29 +423,33 @@ async function initCalendar() {
 		setSchedule()
 	}
 	document.getElementById('red_check').onclick = () => {
-		toggle('red_check', 'red_box', '과제 ')
-		chrome.storage.local.set({'plato_red_box': document.getElementById('red_check').checked})
+		redRadioChecked = document.getElementById('red_check').checked
+		setRadioBox('red_check', 'red_box', '과제 ', redRadioChecked)
+		chrome.storage.local.set({'redRadioChecked': redRadioChecked})
 	}
 	document.getElementById('blue_check').onclick = () => {
-		toggle('blue_check', 'blue_box', '녹강 ')
-		chrome.storage.local.set({'plato_blue_check': document.getElementById('blue_check').checked})
+		blueRadioChecked = document.getElementById('blue_check').checked
+		setRadioBox('blue_check', 'blue_box', '녹강 ', blueRadioChecked)
+		chrome.storage.local.set({'blueRadioChecked': blueRadioChecked})
 
 	}
 	document.getElementById('green_check').onclick = () => {
-		toggle('green_check', 'green_box', '실강 ')
-		chrome.storage.local.set({'plato_green_check': document.getElementById('green_check').checked})
+		greenRadioChecked = document.getElementById('green_check').checked
+		setRadioBox('green_check', 'green_box', '실강 ', greenRadioChecked)
+		chrome.storage.local.set({'greenRadioChecked': greenRadioChecked})
 
 	}
 	document.getElementById('grey_check').onclick = () => {
-		toggle('grey_check', 'grey_box', '완료 ')
-		chrome.storage.local.set({'plato_grey_check': document.getElementById('grey_check').checked})
+		greyRadioChecked = document.getElementById('grey_check').checked
+		setRadioBox('grey_check', 'grey_box', '완료 ', greyRadioChecked)
+		chrome.storage.local.set({'greyRadioChecked': greyRadioChecked})
 	}
 
 	enableLoader()
 	renderMonth(nowYear, nowMonth)
 }
 
-function toggle(id1, id2, text) {
+function setRadioBox(id1, id2, text, checked) {
 	let getEventClass = (text) => {
 		if (text == '과제 ')
 			return 'event-hw'
@@ -377,7 +461,7 @@ function toggle(id1, id2, text) {
 			return 'event-done'
 	}
 
-	if (document.getElementById(id1).checked) {
+	if (checked) {
 		document.getElementById(id2).children[1].textContent = text + '숨기기'
 
 		let targetClass = getEventClass(text)
@@ -419,20 +503,22 @@ function getCourseList() {
 
 function loadLocalStoageData() {
 	return new Promise((resolve, reject) => {
-		chrome.storage.local.get(['plato_schedule', 'plato_schedule_timestamp', 'plato_red_box', 'plato_blue_check', 'plato_green_check', 'plato_grey_check'], (result) => {
-				scheduleList = (result.plato_schedule === undefined) ? [] : result.plato_schedule
-				schedule_timestamp = (result.plato_schedule_timestamp === undefined) ? 'None' : result.plato_schedule_timestamp
-				init_redbox_status = (result.plato_red_box === undefined) ? true : result.plato_red_box
-				init_bluebox_status = (result.plato_blue_check === undefined) ? true : result.plato_blue_check
-				init_greenbox_status = (result.plato_green_check === undefined) ? true : result.plato_green_check
-				init_greybox_status = (result.plato_grey_check === undefined) ? true : result.plato_grey_check
+		chrome.storage.local.get(['scheduleList', 'lastUpdateTime', 'userScheduleSettingList', 'redRadioChecked', 'blueRadioChecked', 'greenRadioChecked', 'greyRadioChecked', 'calendarboxToggle'], (result) => {
+			scheduleList = (result.scheduleList === undefined) ? [] : result.scheduleList
+			lastUpdateTime = (result.lastUpdateTime === undefined) ? 'None' : result.lastUpdateTime,
+			userScheduleSettingList = (result.userScheduleSettingList === undefined) ? [] : result.userScheduleSettingList,
+			redRadioChecked = (result.redRadioChecked === undefined) ? true : result.redRadioChecked
+			blueRadioChecked = (result.blueRadioChecked === undefined) ? true : result.blueRadioChecked
+			greenRadioChecked = (result.greenRadioChecked === undefined) ? true : result.greenRadioChecked
+			greyRadioChecked = (result.greyRadioChecked === undefined) ? true : result.greyRadioChecked
+			calendarboxToggle = (result.calendarboxToggle === undefined) ? true : result.calendarboxToggle
 			resolve()
 		})
 	})
 }
 
 function setTiemStamp() {
-	document.getElementById('loaded_timestamp').innerText = '동기화 시간(10초 정도 소요) \n' + schedule_timestamp
+	document.getElementById('loaded_timestamp').innerText = '동기화 시간(10초 정도 소요) \n' + lastUpdateTime
 }
 
 function getSchdule() {
@@ -469,12 +555,12 @@ async function timer() {
 				}
 
 				// 1시간이 지났으면 update
-				let lastUpdateDate = new Date(schedule_timestamp)
-				if (now - lastUpdateDate >= MAXIMUM_INTERVAL || schedule_timestamp == 'None')
+				let lastUpdateDate = new Date(lastUpdateTime)
+				if (now - lastUpdateDate >= MAXIMUM_INTERVAL || lastUpdateTime == 'None')
 					document.getElementById('loader').click()
 
 				// 1분 이내이면 비활성화
-				if (new Date() - new Date(schedule_timestamp) <= MINIMUM_INTERVAL) 
+				if (new Date() - new Date(lastUpdateTime) <= MINIMUM_INTERVAL) 
 					disableLoader()
 				else 
 					enableLoader()
@@ -523,13 +609,13 @@ async function main() {
 		}
 	}
 	if (modified)
-		await chrome.storage.local.set({'plato_schedule': scheduleList})
+		await chrome.storage.local.set({'scheduleList': scheduleList})
 
 	// checkbox 초기화
-	document.getElementById('red_check').checked = init_redbox_status
-	document.getElementById('blue_check').checked = init_bluebox_status
-	document.getElementById('green_check').checked = init_greenbox_status
-	document.getElementById('grey_check').checked = init_greybox_status
+	document.getElementById('red_check').checked = redRadioChecked
+	document.getElementById('blue_check').checked = blueRadioChecked
+	document.getElementById('green_check').checked = greenRadioChecked
+	document.getElementById('grey_check').checked = greyRadioChecked
 
 	// timestamp 초기화
 	setTiemStamp()
@@ -537,18 +623,26 @@ async function main() {
 	// schedule 초기화
 	setSchedule()
 
+	// 타이머 온
 	timer()
 
 	// 1시간이 지났으면 update
-	let lastUpdateDate = new Date(schedule_timestamp)
-	if (now - lastUpdateDate >= MAXIMUM_INTERVAL || schedule_timestamp == 'None')
+	let lastUpdateDate = new Date(lastUpdateTime)
+	if (now - lastUpdateDate >= MAXIMUM_INTERVAL || lastUpdateTime == 'None')
 		document.getElementById('loader').click()
 
 	// 1분 이내이면 비활성화
-	if (new Date() - new Date(schedule_timestamp) <= MINIMUM_INTERVAL) 
+	if (new Date() - new Date(lastUpdateTime) <= MINIMUM_INTERVAL) 
 		disableLoader()
 	else 
 		enableLoader()
+
+	window.onload = () => {
+		// 캘린더 오픈
+		if (calendarboxToggle)
+			document.getElementById('calendar-box').toggleAttribute('open')
+	}
+
 }
 
 main()

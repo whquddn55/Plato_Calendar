@@ -227,7 +227,10 @@ chrome.runtime.onMessage.addListener(
 		console.log(result)
 
 		const now = new Date()
-		chrome.storage.local.set({plato_schedule: result, plato_schedule_timestamp: now.toLocaleDateString().split(' ').join('') + '..' + now.toTimeString().split(' ')[0]})
+		chrome.storage.local.set({
+			scheduleList: result, 
+			lastUpdateTime: now.toLocaleDateString().split(' ').join('') + '..' + now.toTimeString().split(' ')[0]
+		})
 		chrome.tabs.sendMessage(sender.tab.id, {msg: 'done'});
 	}
 );
