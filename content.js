@@ -205,12 +205,11 @@ function setSchedule() {
 			let targetClass = {'과제': 'event-hw', '동영상' : 'event-video', '화상강의' : 'event-zoom'}[type]
 			let targetColor = {'과제': 'red_check', '동영상' : 'blue_check', '화상강의' : 'green_check'}[type]
 
-			let userScheduleSetting = userScheduleSettingList.find((value) => {
-				return value['course'] == s['course'] && value['title'] == s['title']
-			})
-			if (userScheduleSetting) {
-				targetClass += userScheduleSetting['status'] ? ' event-done' : ''
-				targetColor = userScheduleSetting['status'] ? 'grey_check' : targetColor
+			const obj = findUserSchedule(s['course'], s['title'])
+
+			if (obj) {
+				targetClass += obj['status'] ? ' event-done' : ''
+				targetColor = obj['status'] ? 'grey_check' : targetColor
 			} else {
 				targetClass += s['status'] ? ' event-done' : ''
 				targetColor = s['status'] ? 'grey_check' : targetColor
@@ -317,10 +316,8 @@ function eventButtonClickEvent(event) {
 				continue
 		}
 
-		let userScheduleSetting = userScheduleSettingList.find((value) => {
-			return schedule['course'] == value['course'] && schedule['title'] == value['title']
-		})
-		let status = userScheduleSetting ? userScheduleSetting['status'] : schedule['status']
+		const obj = findUserSchedule(schedule['course'], schedule['title'])
+		let status = obj ? obj['status'] : schedule['status']
 		if (new Date(schedule['date']).toDateString().split(' ').join('_') == targetDate && status == targetStatus && type == targetType) {
 			pushList.push({
 				'data' : schedule,
@@ -376,7 +373,6 @@ function eventButtonClickEvent(event) {
 		document.removeEventListener("click", leftClickListener)
 	}
 
-
 	// 오른클릭 인식
 	for (let e of modal_body.getElementsByClassName('rounded-list')[0].getElementsByTagName('li')) {
 		e.oncontextmenu = (event) => {
@@ -394,18 +390,19 @@ function eventButtonClickEvent(event) {
 
 			contextMenuItem.oncontextmenu = (event) => event.preventDefault()
 			
-
+			let date = new Date((targetDate).replace(/_/gi, '-') + ' ' + e.children[0].children[0].children[1].textContent.trim())
+			if (targetType == '화상강의')
+				date.setHours(date.getHours() + 1)
+			let userScheduleSetting = {
+				'title': e.children[0].children[1].children[0].textContent,
+				'course': e.children[0].children[0].children[0].textContent,
+				'status': false,
+				'priority': date <= new Date() ? 2 : 0,
+			}
 			if (targetStatus) {
 				contextMenuItem.textContent = '완료상태 해제하기'
 				contextMenuItem.onclick = () => {
-					let userScheduleSetting = {
-						'title': e.children[0].children[1].children[0].textContent,
-						'course': e.children[0].children[0].children[0].textContent,
-						'status': false
-					}
-					let obj = userScheduleSettingList.find((value) => {
-						return (value['course'] == userScheduleSetting['course']) && (value['title'] == userScheduleSetting['title'])
-					})
+					const obj = findUserSchedule(userScheduleSetting['course'], userScheduleSetting['title'])
 					if (obj) {
 						userScheduleSettingList.splice(userScheduleSettingList.indexOf(obj), 1)
 					} else {
@@ -418,14 +415,8 @@ function eventButtonClickEvent(event) {
 			} else {
 				contextMenuItem.textContent = '완료로 바꾸기'
 				contextMenuItem.onclick = () => {
-					let userScheduleSetting = {
-						'title': e.children[0].children[1].children[0].textContent,
-						'course': e.children[0].children[0].children[0].textContent,
-						'status': true
-					}
-					let obj = userScheduleSettingList.find((value) => {
-						return (value['course'] == userScheduleSetting['course']) && (value['title'] == userScheduleSetting['title'])
-					})
+					userScheduleSetting['status'] = true
+					const obj = findUserSchedule(userScheduleSetting['course'], userScheduleSetting['title'])
 					if (obj) {
 						userScheduleSettingList.splice(userScheduleSettingList.indexOf(obj), 1)
 					} else {
@@ -596,6 +587,13 @@ async function initCalendar() {
 	renderMonth(nowYear, nowMonth)
 }
 
+function findUserSchedule(course, title) {
+	let obj = userScheduleSettingList.find((value) => {
+		return (value['course'] == course) && (value['title'] == title)
+	})
+	return obj
+}
+
 function setRadioBox(type) {
 	const radioId = {'과제': 'red_box', '동영상': 'blue_box', '화상강의': 'green_box', '완료': 'grey_box'}[type]
 	const checked = {'과제': redRadioChecked, '동영상': blueRadioChecked, '화상강의': greenRadioChecked, '완료': greyRadioChecked}[type]
@@ -642,7 +640,7 @@ function getSchdule() {
 async function timer() {
 	while (true) {
 		await new Promise((resolve, reject) => {
-			setTimeout(() => {
+			setTimeout(async () => {
 				// modal 창 타이머
 				const modal_body = document.getElementById('modal_body')
 				let liList = modal_body.getElementsByTagName('li')
@@ -665,6 +663,36 @@ async function timer() {
 					remainTime += [remainHour, remainMinute, remainSecond].join(':')
 
 					li.getElementsByClassName('remaintime')[0].innerText = remainTime
+				}
+
+				// 1 시간 지난 실강 처리
+				let modified = false
+				for (let schedule of scheduleList) {
+					const obj = findUserSchedule(schedule['course'], schedule['title'])
+					if (obj && obj['priority'] > 1)
+						continue
+					let date = new Date(schedule['date'])
+					if (schedule['type'] == '화상강의') {
+						date.setHours(date.getHours() + 1)
+						if (date <= new Date()) {
+							if (obj)
+								userScheduleSettingList.splice(userScheduleSettingList.indexOf(obj), 1)
+							schedule['status'] = true;
+							modified = true
+						} 
+					}
+					else if (schedule['type'] == '퀴즈') {
+						if (date <= new Date()) {
+							if (obj) 
+								userScheduleSettingList.splice(userScheduleSettingList.indexOf(obj), 1)
+							schedule['status'] = true;
+							modified = true
+						} 
+					}
+				}
+				if (modified) {
+					await chrome.storage.local.set({scheduleList, userScheduleSettingList})
+					setSchedule()
 				}
 
 				// 1시간이 지났으면 update
@@ -705,25 +733,40 @@ function enableLoadingMark() {
 }
 
 async function main() {
+	// 비 로그인화면 커팅
 	if (!document.getElementsByClassName('front-box front-box-pmooc').length)
 		return
 	await initCalendar()
 	await loadLocalStoageData()
 
-	// 시간 지난 실강 처리
+	// 1 시간 지난 실강 처리
 	let modified = false
 	for (let schedule of scheduleList) {
-		if (schedule['type'] == '화상강의' && schedule['status'] == false) {
-			let date = new Date(schedule['date'])
+		const obj = findUserSchedule(schedule['course'], schedule['title'])
+		if (obj && obj['priority'] > 1)
+			continue
+		let date = new Date(schedule['date'])
+		if (schedule['type'] == '화상강의') {
 			date.setHours(date.getHours() + 1)
-			if (date<= now) {
+			if (date <= new Date()) {
+				if (obj) 
+					userScheduleSettingList.splice(userScheduleSettingList.indexOf(obj), 1)
+				schedule['status'] = true;
+				modified = true
+			} 
+		}
+		else if (schedule['type'] == '퀴즈') {
+			if (date <= new Date()) {
+				if (obj) 
+					userScheduleSettingList.splice(userScheduleSettingList.indexOf(obj), 1)
 				schedule['status'] = true;
 				modified = true
 			} 
 		}
 	}
 	if (modified) {
-		await chrome.storage.local.set({'scheduleList': scheduleList})
+		await chrome.storage.local.set({scheduleList, userScheduleSettingList})
+		setSchedule()
 	}
 
 	// checkbox 초기화
@@ -756,8 +799,8 @@ async function main() {
 	else 
 		enableLoadingMark()
 
+	// 캘린더 오픈
 	window.onload = () => {
-		// 캘린더 오픈
 		if (calendarboxToggle)
 			document.getElementById('calendar-box').toggleAttribute('open')
 	}

@@ -3,7 +3,7 @@
    
 	"name": "PLATO CALENDAR",
 	"description": "PLATO 캘린더",
-	"version": "1.0",
+	"version": "0.9.9",
 	"icons": {
         "16": "assets/icon.png",
         "48": "assets/icon.png",
