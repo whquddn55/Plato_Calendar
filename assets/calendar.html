@@ -1,15 +1,10 @@
-<div>
-	<div id="modal_bg">
-	</div>
-	<div id="modal_body">
-		모달창 내용
-	</div>
+<div id="modal_body">
+	모달창 내용
 </div>
 <div id="calendar-wrap">
-	<div id="calendar">
-		<header style = "font-size: 25px;">
+		<header style = "font-size: 1px;">
 			<div style="display: flex; align-self: flex-end; width:30%;">
-				<div id = "loader"></div>
+				<img id = "loadingMark" src = ${loadingImg} style = "font-size: 13px;"></img>
 				<div id = "loaded_timestamp" style="font-size:12px; margin-left: 7px;"></div>
 			</div>
 			<div style="display: flex; align-items: center;">
@@ -17,7 +12,7 @@
 				<h1 id = "year" style = "margin: 0px 15px;">년 월</h1>
 				<img id="up" src=${upImg} title="저번 달" style = "font-size: 13px;">
 			</div>
-			<div id="checkbox_wrap" style = "width:30%; text-align:end;">
+			<div id="checkbox_wrap" style = "width:30%; text-align:end; padding-top: 10px;">
 				<div class="custom_chbox" id = "red_box">
 					<input type="checkbox" id='red_check' checked>
 					<label for="red_check">과제 숨기기</label>
@@ -37,9 +32,8 @@
 			</div>
 			
 		</header>
-		<div style = "display:flex; justify-content: center;">
-			
-		</div>
+
+	<div id="calendar">
 		<ul class="weekdays">
 			<li>월</li>
 			<li>화</li>

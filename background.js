@@ -85,13 +85,52 @@ function getHwInfo(courseId) {
 				const courseTitle = temp.join(' ')
 				$(data).find('tr').each((index, value) => {
 					if ($(value).find('.cell.c1').length) {
-						let title = $(value).find('.cell.c1')[0].textContent.trim()
 						let temp = {}
-						temp['title'] = title
+						temp['title'] = $(value).find('.cell.c1')[0].textContent.trim()
 						temp['link'] = $(value).find('.cell.c1 a')[0].href
 						temp['date'] = (new Date($(value).find('.cell.c2')[0].textContent)).toString()
 						temp['status'] = $(value).find('.cell.c3')[0].textContent == '제출 완료'
 						temp['type'] = '과제'
+						temp['course'] = courseTitle
+						result.push(temp)
+					}
+				})
+				resolve(result)
+			},
+			fail: () => {
+				reject()
+			}
+		})
+	})
+}
+
+function getQuizInfo(courseId) {
+	return new Promise((resolve, reject) => {
+		ajax({
+			url: 'https://plato.pusan.ac.kr/mod/quiz/index.php?id=' + courseId,
+			type: 'get',
+			success: (data) => {
+				let result = []
+
+				let aTagList = $(data).find('.breadcrumb')[0].getElementsByTagName('a')
+				let temp
+				for (let aTag of aTagList) {
+					if (aTag.href.indexOf('course/view.php') != -1){
+						temp = aTag
+						break
+					}
+				}
+				temp = temp.textContent.split(' ')
+				temp.pop()
+				const courseTitle = temp.join(' ')
+				$(data).find('tr').each((index, value) => {
+					if ($(value).find('.cell.c1').length) {
+						let temp = {}
+						temp['title'] = $(value).find('.cell.c1')[0].textContent.trim()
+						temp['link'] =  'https://plato.pusan.ac.kr/mod/quiz/' + $(value).find('.cell.c1 a')[0].getAttribute('href')
+						temp['date'] = (new Date($(value).find('.cell.c2')[0].textContent)).toString()
+						temp['status'] = $(value).find('.cell.c3')[0].textContent != ''
+						temp['type'] = '퀴즈'
 						temp['course'] = courseTitle
 						result.push(temp)
 					}
@@ -145,7 +184,7 @@ function getZoomInfo(courseId) {
 	})
 }
 
-function getOtherInfo(item) {
+function getVideoOtherInfo(item) {
 	let type = $(item).find('.activityicon').attr('alt').trim()
 	if (type != '동영상')
 		return null
@@ -173,7 +212,7 @@ function getOtherInfo(item) {
 }
 
 async function getInfo(courseId) {
-	let videoStatus, hwStatus, zoomStatus, videoStatusOthers = []
+	let videoStatus, hwStatus, quizStatus, zoomStatus, videoStatusOthers = []
 	await Promise.all([
 		new Promise(async (resolve, reject) => {
 			videoStatus = await getVideoInfo(courseId)
@@ -183,6 +222,10 @@ async function getInfo(courseId) {
 			hwStatus = await getHwInfo(courseId)
 			resolve()
 		}),
+		new Promise(async (resolve, reject) => {
+			quizStatus = await getQuizInfo(courseId)
+			resolve()
+		}),	
 		new Promise(async (resolve, reject) => {
 			zoomStatus = await getZoomInfo(courseId)
 			resolve()
@@ -196,7 +239,7 @@ async function getInfo(courseId) {
 					courseTitle.pop()
 					courseTitle = courseTitle.join(' ')
 					$(data).find('#course-all-sections').find('.activityinstance').each((index, item) => {
-						let temp = getOtherInfo(item)
+						let temp = getVideoOtherInfo(item)
 						if (temp)
 							videoStatusOthers.push(temp)
 					})
@@ -215,7 +258,7 @@ async function getInfo(courseId) {
 		if (obj) 
 			result.push(Object.assign(v, obj))
 	}
-	result = result.concat(hwStatus, zoomStatus)
+	result = result.concat(hwStatus, zoomStatus, quizStatus)
 	return result
 } 
 
@@ -225,7 +268,6 @@ chrome.runtime.onMessage.addListener(
 		for (let courseId of request.courseList) 
 			result = result.concat(await getInfo(courseId))
 		console.log(result)
-
 		const now = new Date()
 		chrome.storage.local.set({
 			scheduleList: result, 

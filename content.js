@@ -6,6 +6,7 @@ let blueRadioChecked
 let greenRadioChecked
 let greyRadioChecked
 let calendarboxToggle
+let includeQuiz
 
 const MINIMUM_INTERVAL = 1000 * 60 // 1분
 const MAXIMUM_INTERVAL = 1000 * 60 * 60 // 1시간
@@ -27,8 +28,10 @@ chrome.extension.onMessage.addListener(
 				lastUpdateTime = result.lastUpdateTime
 				setSchedule()
 				setTiemStamp()
-				document.getElementById('loader').className = 'loaded'
-				disableLoader()
+
+				document.getElementById('summaryLoadingBar').style.display = 'none'
+				document.getElementById('loadingMark').className = 'loaded'
+				disableLoadingMark()
 			})
 		}
 	});
@@ -40,15 +43,10 @@ async function injectCalendar() {
 		link.href = chrome.extension.getURL('assets/calendar.css')
 		document.head.appendChild(link)
 
+
 		let calendarUrl = chrome.extension.getURL('assets/calendar.html')
 		fetch(calendarUrl)
 			.then(async (data) => {
-				let htmldata = await data.text()
-				let downImgUrl = chrome.extension.getURL('assets/down.png')
-				let upImgUrl = chrome.extension.getURL('assets/up.png')
-
-				htmldata = htmldata.replace('${upImg}', upImgUrl).replace('${downImg}', downImgUrl)
-
 				let box = document.createElement('details')
 				let summary = document.createElement('summary')
 				let detail = document.createElement('div')
@@ -60,25 +58,122 @@ async function injectCalendar() {
 					calendarboxToggle = box.open
 					chrome.storage.local.set({'calendarboxToggle': calendarboxToggle})
 				}
-				detail.innerHTML = htmldata
 
-				let position = document.getElementsByClassName('front-box front-box-course')[0]
-				position.parentElement.insertBefore(box, position)
+				let summaryLoadingBar = document.createElement('div')
+				summaryLoadingBar.setAttribute('id', 'summaryLoadingBar')
+				
 
-				// context 메뉴 삽입
-				const contextMenuList = document.createElement('ul')
-				contextMenuList.setAttribute('id', 'context-menu')
-				const contextMenu1 = document.createElement('li')
-				contextMenu1.innerText = '안녕하세요'
-				contextMenuList.appendChild(contextMenu1)
-				document.getElementById('page').appendChild(contextMenuList)
+				let summaryLoadingMark = document.createElement('img')
+				summaryLoadingMark.style.width = '13px';
+				summaryLoadingMark.style.height = '13px';
+				summaryLoadingMark.src = chrome.extension.getURL('assets/loading.png')
+				summaryLoadingMark.setAttribute('id', 'summaryLoadingMark')
 
+				let summaryLoadingMarkText = document.createElement('div')
+				summaryLoadingMarkText.textContent = '업데이트중...'
+
+				summaryLoadingBar.appendChild(summaryLoadingMark)
+				summaryLoadingBar.appendChild(summaryLoadingMarkText)
+				summary.appendChild(summaryLoadingBar)
+
+
+				let downImgUrl = chrome.extension.getURL('assets/down.png')
+				let upImgUrl = chrome.extension.getURL('assets/up.png')
+				let loadingImgUrl = chrome.extension.getURL('assets/loading.png')
+				detail.innerHTML = (await data.text())
+					.replace('${upImg}', upImgUrl)
+					.replace('${downImg}', downImgUrl)
+					.replace('${loadingImg}', loadingImgUrl)
+
+				let root = document.getElementsByClassName('front-box front-box-course')[0]
+				root.parentElement.insertBefore(box, root)
+
+				// modalContext 메뉴 삽입
+				const modalcontextMenuList = document.createElement('ul')
+				modalcontextMenuList.setAttribute('id', 'modalContextMenu')
+				const modalcontextMenu1 = document.createElement('li')
+				modalcontextMenuList.appendChild(modalcontextMenu1)
+				modalcontextMenuList.oncontextmenu = (event) => event.preventDefault()
+
+				document.getElementById('page').appendChild(modalcontextMenuList)
+
+				// calendarContext 메뉴 삽입
+				const calendarcontextMenuList = document.createElement('ul')
+				calendarcontextMenuList.setAttribute('id', 'calendarContextMenu')
+				const calendarcontextMenu1 = document.createElement('li')
+				calendarcontextMenu1.innerText = '세팅 초기화'
+				const calendarcontextMenu2 = document.createElement('li')
+				calendarcontextMenu2.setAttribute('id', 'include-quiz')
+				calendarcontextMenu2.innerText = '과제에 퀴즈도 포함하기'
+				calendarcontextMenuList.appendChild(calendarcontextMenu1)
+				calendarcontextMenuList.appendChild(calendarcontextMenu2)
+				calendarcontextMenuList.oncontextmenu = (event) => event.preventDefault()
+
+				// calendarContext 메뉴 동작 
+				calendarcontextMenu1.onclick = (event) => {
+					let ans = window.confirm('모든 세팅을 초기상태로 되돌립니다. 후회 없으신가요?')
+					if (ans) 
+						resetAllData()
+				}
+				calendarcontextMenu2.onclick = (event) => {
+					if (document.documentElement.style.getPropertyValue('--calendar-context-mark') == '"✓"') {
+						includeQuiz = false
+						chrome.storage.local.set({includeQuiz})
+						setSchedule()
+						document.documentElement.style.setProperty('--calendar-context-mark', '""')
+					}
+					else {
+						includeQuiz = true
+						chrome.storage.local.set({includeQuiz})
+						setSchedule()
+						document.documentElement.style.setProperty('--calendar-context-mark', '"✓"')
+					}
+				}
+
+				document.getElementById('page').appendChild(calendarcontextMenuList)
+
+				// modal bg 삽입
+				let d = document.createElement('div')
+				d.id = 'modal_bg'
+				document.body.appendChild(d)
+				
 				resolve()
 			})
 			.catch((error) => {
 				console.log(error)
 				reject()
 			})
+	})
+}
+
+function resetAllData() {
+	scheduleList = []
+	lastUpdateTime = 'None'
+	userScheduleSettingList = []
+	redRadioChecked = document.getElementById('red_check').checked = true
+	blueRadioChecked = document.getElementById('blue_check').checked = true
+	greenRadioChecked = document.getElementById('green_check').checked = true
+	greyRadioChecked = document.getElementById('grey_check').checked = true
+	calendarboxToggle = true
+	includeQuiz = true
+	setTiemStamp()
+	setSchedule()
+	setRadioBox('과제')
+	setRadioBox('동영상')
+	setRadioBox('화상강의')
+	setRadioBox('완료')
+	document.documentElement.style.setProperty('--calendar-context-mark', '"✓"')
+	renderMonth(nowYear, nowMonth)
+	chrome.storage.local.set({
+		scheduleList,
+		lastUpdateTime,
+		userScheduleSettingList,
+		redRadioChecked,
+		blueRadioChecked,
+		greenRadioChecked,
+		greyRadioChecked,
+		calendarboxToggle,
+		includeQuiz
 	})
 }
 
@@ -100,8 +195,15 @@ function setSchedule() {
 		let target = document.getElementById(new Date(date.getFullYear(), date.getMonth(), date.getDate()).toDateString().split(' ').join('_'))
 
 		if (target) {
-			let targetClass = {'과제': 'event-hw', '동영상' : 'event-video', '화상강의' : 'event-zoom'}[s['type']]
-			let targetColor = {'과제': 'red_check', '동영상' : 'blue_check', '화상강의' : 'green_check'}[s['type']]
+			let type = s['type']
+			if (type == '퀴즈') {
+				if (includeQuiz)
+					type = '과제'
+				else
+					continue
+			}
+			let targetClass = {'과제': 'event-hw', '동영상' : 'event-video', '화상강의' : 'event-zoom'}[type]
+			let targetColor = {'과제': 'red_check', '동영상' : 'blue_check', '화상강의' : 'green_check'}[type]
 
 			let userScheduleSetting = userScheduleSettingList.find((value) => {
 				return value['course'] == s['course'] && value['title'] == s['title']
@@ -122,6 +224,7 @@ function setSchedule() {
 function renderMonth(year, month) {
 	document.getElementById('year').textContent = year + ' ' + (month + 1 < 10 ? '0' + (month + 1): (month + 1))
 
+	// week 주 전부 삭제
 	let t = document.getElementsByClassName('week')
 	while (t.length) {
 		t[0].remove()
@@ -144,7 +247,7 @@ function renderMonth(year, month) {
 	while(renderTo.toDateString() != renderFrom.toDateString()) {
 		if (columnCnt == 0) {
 			target = document.createElement('ul')
-			target.setAttribute('class', 'week')
+			target.setAttribute('class', 'week show')
 			document.getElementById('calendar').append(target)
 		}
 		addCalendarItem(target, month, renderFrom)
@@ -200,17 +303,25 @@ function eventButtonClickEvent(event) {
 		</ol>
 	`
 
-	const date = event.path[3].id
-	const status = event.path[0].className.indexOf('event-done') == -1 ? false : true
-	const type = {'hw': '과제', 'video': '동영상', 'zoom': '화상강의'}[event.path[0].className.replace('event-done', '').trim().split('-')[1]]
+	const targetDate = event.path[3].id
+	const targetStatus = event.path[0].className.indexOf('event-done') == -1 ? false : true
+	const targetType = {'hw': '과제', 'video': '동영상', 'zoom': '화상강의'}[event.path[0].className.replace('event-done', '').trim().split('-')[1]]
 
 	let pushList = []
 	for (let schedule of scheduleList) {
+		let type = schedule['type']
+		if (type == '퀴즈') {
+			if (includeQuiz)
+				type = '과제'
+			else
+				continue
+		}
+
 		let userScheduleSetting = userScheduleSettingList.find((value) => {
 			return schedule['course'] == value['course'] && schedule['title'] == value['title']
 		})
-		let targetStatus = userScheduleSetting ? userScheduleSetting['status'] : schedule['status']
-		if (new Date(schedule['date']).toDateString().split(' ').join('_') == date && targetStatus == status && schedule['type'] == type) {
+		let status = userScheduleSetting ? userScheduleSetting['status'] : schedule['status']
+		if (new Date(schedule['date']).toDateString().split(' ').join('_') == targetDate && status == targetStatus && type == targetType) {
 			pushList.push({
 				'data' : schedule,
 				'color' : window.getComputedStyle(event.path[0])['background-color'].replace('0.5', '1.0')
@@ -227,14 +338,16 @@ function eventButtonClickEvent(event) {
 	for (let e of pushList)
 		addToList(modal_body.getElementsByClassName('rounded-list')[0], e['data'], e['color'])
 	
-	modal_body.setAttribute('date', date)
+	modal_body.setAttribute('date', targetDate)
 	modal_body.style.display = 'block'
 	modal_bg.style.display = 'block'
+	modal_bg.style.height = document.body.scrollHeight + 'px'
 
-	modal_body.style.left = Math.min(event.layerX, document.getElementById('page-content').offsetWidth - modal_body.clientWidth - 20) + 'px'
-	modal_body.style.top = event.layerY - modal_body.clientHeight + 'px'
+	modal_body.style.left = Math.min(event.pageX, document.getElementById('page-content').offsetWidth - modal_body.clientWidth - 20) + 'px'
+	modal_body.style.top = Math.max(10, event.pageY - 106  - modal_body.clientHeight) + 'px'
 
 	// 키 인식
+	modal_body.oncontextmenu = (event) => event.preventDefault()
 	window.onkeydown = (e) => {
 		if (e.key == 'Escape')
 			modal_bg.click()
@@ -246,72 +359,79 @@ function eventButtonClickEvent(event) {
 		}
 	}
 	
-	function toggleOnOff(num) {
+	function contextMenuToggle(num) {
 		if (num) {
-			document.getElementById("context-menu").style.display = 'block'
-			document.getElementById('modal_bg').onclick = null
+			document.getElementById("modalContextMenu").style.display = 'block'
+			document.getElementById('modal_bg').onclick = document.getElementById('modal_bg').oncontextmenu = (event) => event.preventDefault()
 		}
 		else {
-			document.getElementById("context-menu").style.display = 'none'
-			document.getElementById('modal_bg').onclick = modalBackgroundClickEvent
+			document.getElementById("modalContextMenu").style.display = 'none'
+			document.getElementById('modal_bg').onclick = document.getElementById('modal_bg').oncontextmenu = modalBackgroundClickEvent
 		}
 	}
-	function showMenu(x, y) {
-		document.getElementById("context-menu").style.top = y + "px"
-		document.getElementById("context-menu").style.left = x + "px"
+
+	function leftClickListener(event) {
+		event.preventDefault()
+		contextMenuToggle(0)
+		document.removeEventListener("click", leftClickListener)
 	}
 
-	// 왼쪽클릭 인식
-	document.addEventListener("click", () => {
-		toggleOnOff(0)
-	})
 
 	// 오른클릭 인식
 	for (let e of modal_body.getElementsByClassName('rounded-list')[0].getElementsByTagName('li')) {
 		e.oncontextmenu = (event) => {
+
+			// 왼쪽클릭 인식
+			document.addEventListener("click", leftClickListener)
+
 			event.preventDefault()
-			toggleOnOff(1)
-			showMenu(event.x, event.y)
+			contextMenuToggle(1)
+			document.getElementById("modalContextMenu").style.top = event.y + "px"
+			document.getElementById("modalContextMenu").style.left = event.x + "px"
 
 			// 컨텍스트메뉴 동작 설정
-			const contextMenuItem = document.getElementById('context-menu').children[0]
+			const contextMenuItem = document.getElementById('modalContextMenu').children[0]
 
-			if (status) {
+			contextMenuItem.oncontextmenu = (event) => event.preventDefault()
+			
+
+			if (targetStatus) {
 				contextMenuItem.textContent = '완료상태 해제하기'
-				let userScheduleSetting = {
-					'title': e.children[0].children[1].children[0].textContent,
-					'course': e.children[0].children[0].children[0].textContent,
-					'status': false
-				}
-				let obj = userScheduleSettingList.find((value) => {
-					return (value['course'] == userScheduleSetting['course']) && (value['title'] == userScheduleSetting['title'])
-				})
-				if (obj) {
-					userScheduleSettingList.splice(userScheduleSettingList.indexOf(obj), 1)
-				} else {
-					userScheduleSettingList.push(userScheduleSetting)
-				}
 				contextMenuItem.onclick = () => {
+					let userScheduleSetting = {
+						'title': e.children[0].children[1].children[0].textContent,
+						'course': e.children[0].children[0].children[0].textContent,
+						'status': false
+					}
+					let obj = userScheduleSettingList.find((value) => {
+						return (value['course'] == userScheduleSetting['course']) && (value['title'] == userScheduleSetting['title'])
+					})
+					if (obj) {
+						userScheduleSettingList.splice(userScheduleSettingList.indexOf(obj), 1)
+					} else {
+						userScheduleSettingList.push(userScheduleSetting)
+					}
 					chrome.storage.local.set({'userScheduleSettingList' : userScheduleSettingList})
 					modalBackgroundClickEvent()
 					setSchedule()
 				}
 			} else {
 				contextMenuItem.textContent = '완료로 바꾸기'
-				let userScheduleSetting = {
-					'title': e.children[0].children[1].children[0].textContent,
-					'course': e.children[0].children[0].children[0].textContent,
-					'status': true
-				}
-				let obj = userScheduleSettingList.find((value) => {
-					return (value['course'] == userScheduleSetting['course']) && (value['title'] == userScheduleSetting['title'])
-				})
-				if (obj) {
-					userScheduleSettingList.splice(userScheduleSettingList.indexOf(obj), 1)
-				} else {
-					userScheduleSettingList.push(userScheduleSetting)
-				}
 				contextMenuItem.onclick = () => {
+					let userScheduleSetting = {
+						'title': e.children[0].children[1].children[0].textContent,
+						'course': e.children[0].children[0].children[0].textContent,
+						'status': true
+					}
+					let obj = userScheduleSettingList.find((value) => {
+						return (value['course'] == userScheduleSetting['course']) && (value['title'] == userScheduleSetting['title'])
+					})
+					if (obj) {
+						userScheduleSettingList.splice(userScheduleSettingList.indexOf(obj), 1)
+					} else {
+						userScheduleSettingList.push(userScheduleSetting)
+					}
+
 					chrome.storage.local.set({'userScheduleSettingList' : userScheduleSettingList})
 					modalBackgroundClickEvent()
 					setSchedule()
@@ -321,7 +441,9 @@ function eventButtonClickEvent(event) {
 	}	
 }
 
-function modalBackgroundClickEvent() {
+function modalBackgroundClickEvent(event) {
+	if (event)
+		event.preventDefault()
 	const modal_body = document.getElementById('modal_body')
 	const modal_bg = document.getElementById('modal_bg')
 	modal_body.scrollTo(0, 0)
@@ -424,77 +546,67 @@ async function initCalendar() {
 	}
 	document.getElementById('red_check').onclick = () => {
 		redRadioChecked = document.getElementById('red_check').checked
-		setRadioBox('red_check', 'red_box', '과제 ', redRadioChecked)
-		chrome.storage.local.set({'redRadioChecked': redRadioChecked})
+		chrome.storage.local.set({redRadioChecked})
+		setRadioBox('과제')
 	}
 	document.getElementById('blue_check').onclick = () => {
 		blueRadioChecked = document.getElementById('blue_check').checked
-		setRadioBox('blue_check', 'blue_box', '녹강 ', blueRadioChecked)
-		chrome.storage.local.set({'blueRadioChecked': blueRadioChecked})
+		chrome.storage.local.set({blueRadioChecked})
+		setRadioBox('동영상')
 
 	}
 	document.getElementById('green_check').onclick = () => {
 		greenRadioChecked = document.getElementById('green_check').checked
-		setRadioBox('green_check', 'green_box', '실강 ', greenRadioChecked)
-		chrome.storage.local.set({'greenRadioChecked': greenRadioChecked})
+		chrome.storage.local.set({greenRadioChecked})
+		setRadioBox('화상강의')
 
 	}
 	document.getElementById('grey_check').onclick = () => {
 		greyRadioChecked = document.getElementById('grey_check').checked
-		setRadioBox('grey_check', 'grey_box', '완료 ', greyRadioChecked)
-		chrome.storage.local.set({'greyRadioChecked': greyRadioChecked})
+		chrome.storage.local.set({greyRadioChecked})
+		setRadioBox('완료')
 	}
 
-	enableLoader()
+	function leftClickListener(event) {
+		event.preventDefault()
+		contextMenuToggle(0)
+		document.removeEventListener("click", leftClickListener)
+	}
+
+	function contextMenuToggle(num) {
+		if (num) {
+			document.getElementById("calendarContextMenu").style.display = 'block'
+		}
+		else {
+			document.getElementById("calendarContextMenu").style.display = 'none'
+		}
+	}
+
+	// 캘린더에서 내에서 우클릭시 세팅
+	document.getElementById('calendar-wrap').oncontextmenu = (event) => {
+		document.addEventListener("click", leftClickListener)
+
+		event.preventDefault()
+		contextMenuToggle(1)
+		document.getElementById("calendarContextMenu").style.top = event.y + "px"
+		document.getElementById("calendarContextMenu").style.left = event.x + "px"
+	}
+
+	enableLoadingMark()
 	renderMonth(nowYear, nowMonth)
 }
 
-function setRadioBox(id1, id2, text, checked) {
-	let getEventClass = (text) => {
-		if (text == '과제 ')
-			return 'event-hw'
-		else if (text == '녹강 ')
-			return 'event-video'
-		else if (text == '실강 ')
-			return 'event-zoom'
-		else if (text == '완료 ')
-			return 'event-done'
-	}
-
-	if (checked) {
-		document.getElementById(id2).children[1].textContent = text + '숨기기'
-
-		let targetClass = getEventClass(text)
-		if (targetClass == 'event-done') {
-			for (let target of document.getElementsByClassName(targetClass)) {
-				if (target.textContent.length)
-					target.setAttribute('style', 'visibility: visible')
-			}
-		}
-		else {
-			for (let target of document.querySelectorAll('.' + targetClass + ':not(.event-done)')) {
-				if (target.textContent.length)
-					target.setAttribute('style', 'visibility: visible')
-			}
-		}
-	}
-	else{
-		document.getElementById(id2).children[1].textContent = text + '보이기'
-		
-		let targetClass = getEventClass(text)
-		if (targetClass == 'event-done') {
-			for (let target of document.getElementsByClassName(targetClass)) {
-				if (target.textContent.length)
-					target.setAttribute('style', 'visibility: hidden')
-			}
-		}
-		else {
-			for (let target of document.querySelectorAll('.' + targetClass + ':not(.event-done)')) {
-				if (target.textContent.length)
-					target.setAttribute('style', 'visibility: hidden')
-			}
-		}
-	}
+function setRadioBox(type) {
+	const radioId = {'과제': 'red_box', '동영상': 'blue_box', '화상강의': 'green_box', '완료': 'grey_box'}[type]
+	const checked = {'과제': redRadioChecked, '동영상': blueRadioChecked, '화상강의': greenRadioChecked, '완료': greyRadioChecked}[type]
+	const text = {'과제': '과제', '동영상': '녹강', '화상강의': '실강', '완료': '완료'}[type] + ' ' + (checked ? '숨기기' : '보이기')
+	const targetQuery = '.' + {'과제': 'event-hw', '동영상': 'event-video', '화상강의': 'event-zoom', '완료': 'event-done'}[type] +
+		(type == '완료' ? '' : ':not(.event-done)')
+	
+	document.getElementById(radioId).children[1].textContext = text
+	for (let target of document.querySelectorAll(targetQuery))
+		if (target.textContent.length)
+			target.setAttribute('style', 'visibility: ' + (checked ? 'visible' : 'hidden'))
 }
 
 function getCourseList() {
@@ -503,7 +615,7 @@ function getCourseList() {
 
 function loadLocalStoageData() {
 	return new Promise((resolve, reject) => {
-		chrome.storage.local.get(['scheduleList', 'lastUpdateTime', 'userScheduleSettingList', 'redRadioChecked', 'blueRadioChecked', 'greenRadioChecked', 'greyRadioChecked', 'calendarboxToggle'], (result) => {
+		chrome.storage.local.get(['scheduleList', 'lastUpdateTime', 'userScheduleSettingList', 'redRadioChecked', 'blueRadioChecked', 'greenRadioChecked', 'greyRadioChecked', 'calendarboxToggle', 'includeQuiz'], (result) => {
 			scheduleList = (result.scheduleList === undefined) ? [] : result.scheduleList
 			lastUpdateTime = (result.lastUpdateTime === undefined) ? 'None' : result.lastUpdateTime,
 			userScheduleSettingList = (result.userScheduleSettingList === undefined) ? [] : result.userScheduleSettingList,
@@ -512,6 +624,7 @@ function loadLocalStoageData() {
 			greenRadioChecked = (result.greenRadioChecked === undefined) ? true : result.greenRadioChecked
 			greyRadioChecked = (result.greyRadioChecked === undefined) ? true : result.greyRadioChecked
 			calendarboxToggle = (result.calendarboxToggle === undefined) ? true : result.calendarboxToggle
+			includeQuiz = (result.includeQuiz === undefined) ? true : result.includeQuiz
 			resolve()
 		})
 	})
@@ -556,14 +669,14 @@ async function timer() {
 
 				// 1시간이 지났으면 update
 				let lastUpdateDate = new Date(lastUpdateTime)
-				if (now - lastUpdateDate >= MAXIMUM_INTERVAL || lastUpdateTime == 'None')
-					document.getElementById('loader').click()
+				if (now - lastUpdateDate >= MAXIMUM_INTERVAL)
+					document.getElementById('loadingMark').click()
 
 				// 1분 이내이면 비활성화
 				if (new Date() - new Date(lastUpdateTime) <= MINIMUM_INTERVAL) 
-					disableLoader()
+					disableLoadingMark()
 				else 
-					enableLoader()
+					enableLoadingMark()
 				
 				resolve()
 			}, 1000)
@@ -571,25 +684,24 @@ async function timer() {
 	}
 }
 
-function disableLoader() {
-	const loader = document.getElementById('loader')
-	loader.setAttribute('data-tooltip-text', "1분이내로\n동기화 금지")
-	loader.onclick = null
-	loader.style.cursor = 'not-allowed'
-	loader.style.borderTop = '7px solid rgb(177, 0, 0)'
+function disableLoadingMark() {
+	const loadingMark = document.getElementById('loadingMark')
+	loadingMark.parentElement.setAttribute('data-tooltip-text', "1분이내로\n동기화 금지")
+	loadingMark.onclick = null
+	loadingMark.style.cursor = 'not-allowed'
 }
 
-function enableLoader() {
-	const loader = document.getElementById('loader')
-	loader.removeAttribute('data-tooltip-text')
-	loader.onclick = () => {
-		if (document.getElementById('loader').className != 'loading') {
-			document.getElementById('loader').className = 'loading'
+function enableLoadingMark() {
+	const loadingMark = document.getElementById('loadingMark')
+	loadingMark.parentElement.removeAttribute('data-tooltip-text')
+	loadingMark.onclick = () => {
+		if (document.getElementById('loadingMark').className != 'loading') {
+			document.getElementById('summaryLoadingBar').style.display = 'flex'
+			document.getElementById('loadingMark').className = 'loading'
 			getSchdule()
 		}
 	}
-	loader.style.removeProperty('cursor')
-	loader.style.borderTop = '7px solid rgb(20, 103, 226)'
+	loadingMark.style.removeProperty('cursor')
 }
 
 async function main() {
@@ -602,20 +714,27 @@ async function main() {
 	let modified = false
 	for (let schedule of scheduleList) {
 		if (schedule['type'] == '화상강의' && schedule['status'] == false) {
-			if (new Date(schedule['date']) <= now) {
+			let date = new Date(schedule['date'])
+			date.setHours(date.getHours() + 1)
+			if (date<= now) {
 				schedule['status'] = true;
 				modified = true
 			} 
 		}
 	}
-	if (modified)
+	if (modified) {
 		await chrome.storage.local.set({'scheduleList': scheduleList})
+	}
 
 	// checkbox 초기화
 	document.getElementById('red_check').checked = redRadioChecked
 	document.getElementById('blue_check').checked = blueRadioChecked
 	document.getElementById('green_check').checked = greenRadioChecked
 	document.getElementById('grey_check').checked = greyRadioChecked
+
+	// 퀴즈 체크 초기화
+	if (includeQuiz)
+		document.documentElement.style.setProperty('--calendar-context-mark', '"✓"')
 
 	// timestamp 초기화
 	setTiemStamp()
@@ -626,24 +745,24 @@ async function main() {
 	// 타이머 온
 	timer()
 
-	// 1시간이 지났으면 update
+	// 1시간이 지났거나 초기상태이면 update
 	let lastUpdateDate = new Date(lastUpdateTime)
 	if (now - lastUpdateDate >= MAXIMUM_INTERVAL || lastUpdateTime == 'None')
-		document.getElementById('loader').click()
+		document.getElementById('loadingMark').click()
 
 	// 1분 이내이면 비활성화
 	if (new Date() - new Date(lastUpdateTime) <= MINIMUM_INTERVAL) 
-		disableLoader()
+		disableLoadingMark()
 	else 
-		enableLoader()
+		enableLoadingMark()
 
 	window.onload = () => {
 		// 캘린더 오픈
 		if (calendarboxToggle)
 			document.getElementById('calendar-box').toggleAttribute('open')
 	}
-
 }
 
 main()
+
 

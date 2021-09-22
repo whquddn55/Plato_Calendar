@@ -26,6 +26,7 @@
   	],
 
   	"web_accessible_resources": [
-    	"assets/down.png", "assets/up.png", "assets/calendar.css", "assets/calendar.html"
+    	"assets/down.png", "assets/up.png", "assets/calendar.css", "assets/calendar.html",
+    	"assets/loading.png"
 	]
 }
