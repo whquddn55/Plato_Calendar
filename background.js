@@ -129,7 +129,7 @@ function getQuizInfo(courseId) {
 						temp['title'] = $(value).find('.cell.c1')[0].textContent.trim()
 						temp['link'] =  'https://plato.pusan.ac.kr/mod/quiz/' + $(value).find('.cell.c1 a')[0].getAttribute('href')
 						temp['date'] = (new Date($(value).find('.cell.c2')[0].textContent)).toString()
-						temp['status'] = $(value).find('.cell.c3')[0].textContent != ''
+						temp['status'] = $(value).find('.cell.c3')[0].textContent != '' || (new Date($(value).find('.cell.c2')[0].textContent)) <= (new Date())
 						temp['type'] = '퀴즈'
 						temp['course'] = courseTitle
 						result.push(temp)

@@ -668,6 +668,8 @@ async function timer() {
 				// 1 시간 지난 실강 처리
 				let modified = false
 				for (let schedule of scheduleList) {
+					if (schedule['status'] == true)
+						continue
 					const obj = findUserSchedule(schedule['course'], schedule['title'])
 					if (obj && obj['priority'] > 1)
 						continue
@@ -690,6 +692,7 @@ async function timer() {
 						} 
 					}
 				}
+				await chrome.storage.local.set({scheduleList, userScheduleSettingList})
 				if (modified) {
 					await chrome.storage.local.set({scheduleList, userScheduleSettingList})
 					setSchedule()
