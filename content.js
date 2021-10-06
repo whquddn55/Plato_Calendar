@@ -803,10 +803,8 @@ async function main() {
 		enableLoadingMark()
 
 	// 캘린더 오픈
-	window.onload = () => {
-		if (calendarboxToggle)
-			document.getElementById('calendar-box').toggleAttribute('open')
-	}
+	if (calendarboxToggle)
+		document.getElementById('calendar-box').toggleAttribute('open')
 }
 
 main()

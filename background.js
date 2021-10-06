@@ -1,3 +1,9 @@
+chrome.runtime.onInstalled.addListener((details) => {
+	if (details.reason == 'update' || details.reason == 'install') {
+		window.open(chrome.extension.getURL('assets/noti.html'), '테스트', `left=500 top=300 height=600 width=750 toolbar=no menubar=no location=no directories=no status=no scollbars=no resizble=no fullscreen=no channelmode=no titlebar=no scrollbars=no dialog=yes`)
+	}
+})
+
 function ajax(options) {
 	options = options || {};
 	let xhr = new XMLHttpRequest();
